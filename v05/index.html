@@ -1342,19 +1342,20 @@
 
     function parseReport(content) {
       const out = {
-        finance: {},     // {revenue, operatingProfit, cashBalance, accountsReceivable, creditLine, operatingMargin, yieldRate}
-        hr:      {},     // {turnoverRate, pendingApprovals, totalEmployees, leaveUsage}
-        sales:   {},     // {newOrders, contracts}
-        schedule: [],    // [{date, title}, ...]
+        finance: {},
+        hr:      {},
+        sales:   {},
+        schedule: [],
         meta:    { length: 0 }
       };
       if (!content || typeof content !== 'string') return out;
-      const text = content;
+      const text = normalizeReportText(content);
       out.meta.length = text.length;
 
-      const AMT = '([\\d,]+(?:\\.\\d+)?\\s*(?:조|억|백만|만|천)?\\s*원?)';
-      const PCT = '([\\d.]+)\\s*%';
-      const NUM = '([\\d,]+)';
+      // 수치 패턴 — 키워드와 숫자 사이를 콜론·하이픈·공백·괄호 등 다양하게 허용
+      const AMT = '([\\d.,]+\\s*(?:조|억|백만|만|천)?\\s*원?)';
+      const PCT = '([\\d.,]+)\\s*%';
+      const NUM = '([\\d.,]+)';
 
       // 재무
       let m;
@@ -1449,8 +1450,12 @@
         if (p.schedule.length > 0) {
           p.schedule.forEach(s => merged.schedule.push(Object.assign({}, s, { source: r.name })));
         }
+        // 유효한 숫자만 fields에 (NaN 등 제외)
+        function validNumKeys(obj) {
+          return Object.keys(obj).filter(k => typeof obj[k] === 'number' && !isNaN(obj[k]));
+        }
         const fields = []
-          .concat(Object.keys(p.finance), Object.keys(p.hr), Object.keys(p.sales),
+          .concat(validNumKeys(p.finance), validNumKeys(p.hr), validNumKeys(p.sales),
                   p.schedule.length ? ['일정 ' + p.schedule.length + '건'] : []);
         if (fields.length > 0) merged.sources.push({ name: r.name, fields: fields });
       });
@@ -2384,7 +2389,10 @@
           const arr = loadReports();
           if (!arr[idx] && action !== 'summarize') return;
           if (action === 'summarize') {
-            summarizeReport(f);
+            // 본문 + 인식 항목 미리보기 우선 표시
+            showReportPreview(f);
+            // BYOK 키 있으면 LLM 요약 추가 시도 (백그라운드)
+            try { summarizeReport(f); } catch (e) {}
           } else if (action === 'archive') {
             arr[idx].status = 'archived';
             arr[idx].archivedAt = new Date().toLocaleString('ko-KR');
@@ -2643,14 +2651,38 @@
         for (let i = 1; i <= maxPages; i++) {
           const page = await pdf.getPage(i);
           const content = await page.getTextContent();
-          text += content.items.map(it => it.str).join(' ') + '\n';
-          if (text.length > 8000) break;
+          // 줄 끝 마커(hasEOL)를 활용해 줄바꿈 보존
+          let pageText = '';
+          content.items.forEach(it => {
+            pageText += it.str;
+            if (it.hasEOL) pageText += '\n';
+            else            pageText += ' ';
+          });
+          text += pageText + '\n';
+          if (text.length > 12000) break;
         }
-        return text;
+        return normalizeReportText(text);
       } catch (e) {
         console.error('PDF 본문 추출 실패:', e);
         return '';
       }
+    }
+
+    // PDF/텍스트 본문에서 한국어·숫자가 글자별로 흩어진 경우 합침
+    function normalizeReportText(s) {
+      if (!s) return '';
+      let t = String(s);
+      // 다중 공백 → 단일 공백 (줄바꿈은 보존)
+      t = t.replace(/[ \t]+/g, ' ');
+      // 한글 사이 단일 공백 제거 ("매 출" → "매출")
+      for (let i = 0; i < 3; i++) t = t.replace(/([가-힣])\s([가-힣])/g, '$1$2');
+      // 숫자 사이 공백 제거 ("2 4" → "24")
+      for (let i = 0; i < 3; i++) t = t.replace(/(\d)\s(\d)/g, '$1$2');
+      // 숫자 + 단위 사이 공백 제거 ("24 억" → "24억")
+      t = t.replace(/(\d[\d.,]*)\s*(조|억|백만|만|천|원|%|건|명)/g, '$1$2');
+      // 숫자 + 점 + 숫자 사이 공백 ("12 . 4" → "12.4")
+      t = t.replace(/(\d)\s*\.\s*(\d)/g, '$1.$2');
+      return t;
     }
 
     function handleFiles(fileList) {
@@ -2713,6 +2745,80 @@
           if (--pending === 0) finalize();
         }
       });
+    }
+
+    // 보고서 클릭 시 우측 AI 요약 패널에 본문 미리보기 + 인식된 항목 표시
+    function showReportPreview(file) {
+      const pane = $('#reportSummaryPane');
+      if (!pane) return;
+      clearChildren(pane);
+
+      const head = el('div', { class: 'text-xs text-slate-500 mb-2 break-all' }, file.name);
+      pane.appendChild(head);
+
+      if (!file.content) {
+        pane.appendChild(el('div', { class: 'text-xs text-slate-500 leading-relaxed' },
+          '이 파일은 본문 추출이 지원되지 않는 형식입니다 (이미지·녹음·엑셀·Word 등). 본문 자동 추출은 PDF·텍스트(.txt/.md/.csv) 파일에서만 가능합니다.'));
+        return;
+      }
+
+      // 인식된 항목
+      const parsed = parseReport(file.content);
+      const KLABEL = {
+        revenue: '매출', operatingProfit: '영업이익', cashBalance: '현금잔고',
+        accountsReceivable: '매출채권', creditLine: '여신한도잔여',
+        operatingMargin: '영업이익률', yieldRate: '수율',
+        turnoverRate: '이직률', leaveUsage: '연차소진율',
+        pendingApprovals: '결재대기', totalEmployees: '재직자수',
+        newOrders: '신규수주', contracts: '계약'
+      };
+      const recog = [];
+      Object.keys(parsed.finance).forEach(k => {
+        const v = parsed.finance[k];
+        if (typeof v !== 'number' || isNaN(v)) return;
+        const isPct = (k === 'operatingMargin' || k === 'yieldRate');
+        recog.push((KLABEL[k] || k) + ' = ' + (isPct ? v + '%' : fmtMoney(v)));
+      });
+      Object.keys(parsed.hr).forEach(k => {
+        const v = parsed.hr[k];
+        if (typeof v !== 'number' || isNaN(v)) return;
+        const unit = (k === 'turnoverRate' || k === 'leaveUsage') ? '%' : (k === 'pendingApprovals' ? '건' : '명');
+        recog.push((KLABEL[k] || k) + ' = ' + v + unit);
+      });
+      Object.keys(parsed.sales).forEach(k => {
+        const v = parsed.sales[k];
+        if (typeof v !== 'number' || isNaN(v)) return;
+        recog.push((KLABEL[k] || k) + ' = ' + v + '건');
+      });
+      if (parsed.schedule.length > 0) {
+        recog.push('일정 ' + parsed.schedule.length + '건');
+      }
+
+      const recogTitle = el('div', { class: 'text-xs font-bold text-navy-900 dark:text-navy-50 mb-1' }, '🤖 자동 인식된 항목');
+      pane.appendChild(recogTitle);
+      if (recog.length > 0) {
+        const ul = el('ul', { class: 'text-xs space-y-0.5 mb-3 list-disc list-inside text-slate-700 dark:text-slate-300' });
+        recog.forEach(r => ul.appendChild(el('li', null, r)));
+        pane.appendChild(ul);
+        // 일정 별도 표시
+        if (parsed.schedule.length > 0) {
+          const sUl = el('ul', { class: 'text-[11px] space-y-0.5 mb-3 list-disc list-inside text-slate-600 dark:text-slate-400' });
+          parsed.schedule.slice(0, 6).forEach(s => sUl.appendChild(el('li', null, s.date + ' — ' + s.title)));
+          pane.appendChild(sUl);
+        }
+      } else {
+        pane.appendChild(el('div', { class: 'text-xs text-slate-500 mb-3 leading-relaxed' },
+          '인식된 비즈니스 키워드가 없습니다. 본문에 "매출 24억", "이직률 7.8%", "결재 대기 11건" 같이 한국어 키워드 + 숫자가 명확하면 자동 추출됩니다.'));
+      }
+
+      // 추출된 본문 미리보기
+      const bodyTitle = el('div', { class: 'text-xs font-bold text-navy-900 dark:text-navy-50 mb-1 mt-3' },
+        '📄 추출된 본문 (' + file.content.length + '자)');
+      pane.appendChild(bodyTitle);
+      const pre = document.createElement('pre');
+      pre.className = 'text-[11px] text-slate-700 dark:text-slate-300 bg-slate-50 dark:bg-navy-900/40 p-2 rounded leading-relaxed max-h-64 overflow-y-auto whitespace-pre-wrap break-all';
+      pre.textContent = file.content.slice(0, 1500) + (file.content.length > 1500 ? '\n\n... (이하 생략)' : '');
+      pane.appendChild(pre);
     }
 
     function summarizeReport(file) {
