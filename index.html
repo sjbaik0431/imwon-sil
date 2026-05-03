@@ -1377,7 +1377,7 @@
       const PCT = '([\\d.,]+)\\s*%';
       const NUM = '([\\d.,]+)';
 
-      // 재무
+      // 재무 — 매출·이익·현금
       let m;
       m = text.match(new RegExp('(?:당월\\s*매출|매출액|매출)[\\s::\\-]*' + AMT));
       if (m) out.finance.revenue = parseAmount(m[1]);
@@ -1399,6 +1399,43 @@
 
       m = text.match(new RegExp('(?:수율)[\\s::\\-]*' + PCT));
       if (m) out.finance.yieldRate = parseFloat(m[1]);
+
+      // 제조업 특화 — 수주·생산·출하 (DACO식 일일 모닝브리핑 패턴)
+      m = text.match(new RegExp('(?:국내영업\\s*일일\\s*수주액|일일\\s*수주액)[\\s::\\(\\)\\-]*' + AMT));
+      if (m) out.sales.dailyOrders = parseAmount(m[1]);
+
+      m = text.match(new RegExp('(?:일평균|월\\s*일평균)[\\s::\\(\\)\\-]*' + AMT));
+      if (m) out.sales.monthlyAvgOrders = parseAmount(m[1]);
+
+      m = text.match(new RegExp('(?:수주\\s*누계|월\\s*수주\\s*누계)[\\s::\\-]*' + AMT));
+      if (m) out.sales.cumulativeOrders = parseAmount(m[1]);
+
+      m = text.match(new RegExp('(?:일본영업\\s*수주액|일본\\s*수주액|수주\\s*합계)[\\s::\\(\\)\\-가-힣]*' + AMT));
+      if (m) out.sales.japanOrders = parseAmount(m[1]);
+
+      m = text.match(new RegExp('(?:해외영업\\s*수주액|해외\\s*수주액)[\\s::\\(\\)\\-가-힣]*' + AMT));
+      if (m) out.sales.overseasOrders = parseAmount(m[1]);
+
+      m = text.match(new RegExp('(?:신규\\s*수주|수주액)[\\s::\\-]*' + AMT));
+      if (m && !out.sales.dailyOrders) out.sales.totalOrders = parseAmount(m[1]);
+
+      m = text.match(new RegExp('(?:필요\\s*일수)[\\s::\\(\\)가-힣\\-]*' + NUM + '\\s*일'));
+      if (m) out.production = out.production || {}, out.production.requiredDays = parseFloat(m[1].replace(/,/g, ''));
+
+      m = text.match(new RegExp('(?:가동률|설비\\s*가동률)[\\s::\\-]*' + PCT));
+      if (m) (out.production = out.production || {}).utilizationRate = parseFloat(m[1]);
+
+      m = text.match(new RegExp('(?:납기\\s*준수율|납기준수율)[\\s::\\-]*' + PCT));
+      if (m) (out.production = out.production || {}).onTimeDeliveryRate = parseFloat(m[1]);
+
+      m = text.match(new RegExp('(?:불량률)[\\s::\\-]*' + PCT));
+      if (m) (out.production = out.production || {}).defectRate = parseFloat(m[1]);
+
+      m = text.match(new RegExp('(?:재고일수|재고\\s*일수)[\\s::\\-]*' + NUM + '\\s*일'));
+      if (m) (out.production = out.production || {}).inventoryDays = parseFloat(m[1].replace(/,/g, ''));
+
+      m = text.match(new RegExp('(?:품질\\s*이슈|AS\\s*사항|클레임)[\\s::\\(\\)가-힣\\-]*' + NUM + '\\s*건'));
+      if (m) (out.production = out.production || {}).qualityIssues = parseInt(m[1].replace(/,/g, ''));
 
       // 인사
       m = text.match(new RegExp('이직률[\\s::\\-]*' + PCT));
@@ -1460,13 +1497,14 @@
       const active = (reports || []).filter(r => r && r.content && (r.status || 'active') === 'active');
       if (active.length === 0) return null;
 
-      const merged = { finance: {}, hr: {}, sales: {}, schedule: [], sources: [] };
+      const merged = { finance: {}, hr: {}, sales: {}, production: {}, schedule: [], sources: [] };
       // 오래된 것부터 → 최신이 덮어쓰도록
       active.slice().reverse().forEach(r => {
         const p = parseReport(r.content);
         Object.assign(merged.finance, p.finance);
         Object.assign(merged.hr,      p.hr);
         Object.assign(merged.sales,   p.sales);
+        if (p.production) Object.assign(merged.production, p.production);
         if (p.schedule.length > 0) {
           p.schedule.forEach(s => merged.schedule.push(Object.assign({}, s, { source: r.name })));
         }
@@ -1476,6 +1514,7 @@
         }
         const fields = []
           .concat(validNumKeys(p.finance), validNumKeys(p.hr), validNumKeys(p.sales),
+                  p.production ? validNumKeys(p.production) : [],
                   p.schedule.length ? ['일정 ' + p.schedule.length + '건'] : []);
         if (fields.length > 0) merged.sources.push({ name: r.name, fields: fields });
       });
@@ -2213,10 +2252,24 @@
           if (h.turnoverRate     !== undefined) extBox.appendChild(el('li', null, '🚪 이직률 ' + h.turnoverRate + '%'));
           if (h.leaveUsage       !== undefined) extBox.appendChild(el('li', null, '🏖 연차소진율 ' + h.leaveUsage + '%'));
           if (h.pendingApprovals !== undefined) extBox.appendChild(el('li', null, '✍ 결재 대기 ' + h.pendingApprovals + '건'));
-          // 영업
+          // 영업·수주
           const s = extracted.sales || {};
-          if (s.newOrders !== undefined) extBox.appendChild(el('li', null, '📝 신규 수주 ' + s.newOrders + '건'));
-          if (s.contracts !== undefined) extBox.appendChild(el('li', null, '📑 신규 계약 ' + s.contracts + '건'));
+          if (s.newOrders !== undefined)         extBox.appendChild(el('li', null, '📝 신규 수주 ' + s.newOrders + '건'));
+          if (s.contracts !== undefined)         extBox.appendChild(el('li', null, '📑 신규 계약 ' + s.contracts + '건'));
+          if (s.dailyOrders !== undefined)       extBox.appendChild(el('li', null, '📦 일일 수주액 ' + fmtMoney(s.dailyOrders)));
+          if (s.monthlyAvgOrders !== undefined)  extBox.appendChild(el('li', null, '📊 월 일평균 수주 ' + fmtMoney(s.monthlyAvgOrders)));
+          if (s.cumulativeOrders !== undefined)  extBox.appendChild(el('li', null, '📈 수주 누계 ' + fmtMoney(s.cumulativeOrders)));
+          if (s.japanOrders !== undefined)       extBox.appendChild(el('li', null, '🇯🇵 일본영업 수주액 ' + fmtMoney(s.japanOrders)));
+          if (s.overseasOrders !== undefined)    extBox.appendChild(el('li', null, '🌐 해외영업 수주액 ' + fmtMoney(s.overseasOrders)));
+          if (s.totalOrders !== undefined)       extBox.appendChild(el('li', null, '📋 총 수주액 ' + fmtMoney(s.totalOrders)));
+          // 생산
+          const pr = extracted.production || {};
+          if (pr.requiredDays !== undefined)        extBox.appendChild(el('li', null, '⏱ 필요 일수 ' + pr.requiredDays + '일'));
+          if (pr.utilizationRate !== undefined)     extBox.appendChild(el('li', null, '⚙ 가동률 ' + pr.utilizationRate + '%'));
+          if (pr.onTimeDeliveryRate !== undefined)  extBox.appendChild(el('li', null, '🚚 납기준수율 ' + pr.onTimeDeliveryRate + '%'));
+          if (pr.defectRate !== undefined)          extBox.appendChild(el('li', null, '⚠ 불량률 ' + pr.defectRate + '%'));
+          if (pr.inventoryDays !== undefined)       extBox.appendChild(el('li', null, '📦 재고일수 ' + pr.inventoryDays + '일'));
+          if (pr.qualityIssues !== undefined)       extBox.appendChild(el('li', null, '🔧 품질 이슈 ' + pr.qualityIssues + '건'));
           // 일정
           if (extracted.schedule && extracted.schedule.length > 0) {
             extBox.appendChild(el('li', null, '📅 일정 ' + extracted.schedule.length + '건 (자동 추출)'));
