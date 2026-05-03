@@ -41,12 +41,32 @@
   <!-- Chart.js CDN -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
-  <!-- PDF.js CDN — PDF 본문 자동 추출용 -->
-  <script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js"></script>
+  <!-- PDF.js CDN — PDF 본문 자동 추출용 (4.x 안정판: 한국어 PDF 호환성↑) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.0.379/pdf.min.mjs" type="module"></script>
+  <script type="module">
+    import * as pdfjs from 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.0.379/pdf.min.mjs';
+    pdfjs.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.0.379/pdf.worker.min.mjs';
+    window.pdfjsLib = pdfjs;
+    window.dispatchEvent(new Event('pdfjs-ready'));
+  </script>
+  <!-- 폴백: 4.x 모듈 로드 실패 시 3.x 비모듈 버전 자동 로드 -->
   <script>
-    if (typeof pdfjsLib !== 'undefined') {
-      pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js';
-    }
+    setTimeout(function () {
+      if (typeof window.pdfjsLib === 'undefined') {
+        const s = document.createElement('script');
+        s.src = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js';
+        s.onload = function () {
+          if (typeof pdfjsLib !== 'undefined') {
+            pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js';
+            window.pdfjsLib = pdfjsLib;
+            console.log('[PDF.js] 3.x 폴백 로드 완료');
+          }
+        };
+        document.head.appendChild(s);
+      } else {
+        console.log('[PDF.js] 4.x 로드 완료');
+      }
+    }, 1500);
   </script>
 
   <style>
@@ -2703,30 +2723,47 @@
       }
     }
 
-    // PDF 본문 추출 (PDF.js 필요, 미로드 시 빈 문자열 반환)
+    // PDF 본문 추출 — 한도 확대(50페이지·50,000자) + 디버그 로그 + 라이브러리 미로드 대기
     async function extractPdfText(file) {
-      if (typeof pdfjsLib === 'undefined') return '';
+      // PDF.js 비동기 로드 대기 (최대 5초)
+      let waited = 0;
+      while (typeof window.pdfjsLib === 'undefined' && waited < 5000) {
+        await new Promise(r => setTimeout(r, 100));
+        waited += 100;
+      }
+      if (typeof window.pdfjsLib === 'undefined') {
+        console.warn('[PDF.js] 라이브러리 로드 실패 — CDN 차단 가능성');
+        return '';
+      }
       try {
         const buf = await file.arrayBuffer();
-        const pdf = await pdfjsLib.getDocument({ data: buf }).promise;
-        const maxPages = Math.min(pdf.numPages, 20); // 20페이지 한도
+        const pdf = await window.pdfjsLib.getDocument({ data: buf, useSystemFonts: true }).promise;
+        const totalPages = pdf.numPages;
+        const maxPages = Math.min(totalPages, 50);
         let text = '';
+        let totalItems = 0;
         for (let i = 1; i <= maxPages; i++) {
           const page = await pdf.getPage(i);
           const content = await page.getTextContent();
-          // 줄 끝 마커(hasEOL)를 활용해 줄바꿈 보존
+          totalItems += (content.items || []).length;
           let pageText = '';
-          content.items.forEach(it => {
-            pageText += it.str;
-            if (it.hasEOL) pageText += '\n';
-            else            pageText += ' ';
+          (content.items || []).forEach(it => {
+            // 4.x: it.str / 3.x: it.str — 동일
+            const s = (it && (it.str !== undefined ? it.str : '')) || '';
+            pageText += s;
+            if (it && it.hasEOL) pageText += '\n';
+            else                  pageText += ' ';
           });
           text += pageText + '\n';
-          if (text.length > 12000) break;
+          if (text.length > 50000) break;
         }
+        console.log('[PDF.js] 추출 완료:', file.name,
+          '· 페이지:', maxPages + '/' + totalPages,
+          '· 총 textItems:', totalItems,
+          '· 추출 자수:', text.length);
         return normalizeReportText(text);
       } catch (e) {
-        console.error('PDF 본문 추출 실패:', e);
+        console.error('[PDF.js] 본문 추출 실패:', file.name, e);
         return '';
       }
     }
@@ -2790,10 +2827,10 @@
         const isText = /\.(txt|md|csv|json|log)$/.test(lower) || (f.type || '').startsWith('text/');
         const isPdf  = /\.pdf$/.test(lower) || (f.type || '') === 'application/pdf';
 
-        if (isPdf && f.size > 0 && f.size < 5 * 1024 * 1024) {
-          // PDF — 본문 텍스트 자동 추출 (5MB 한도)
+        if (isPdf && f.size > 0 && f.size < 20 * 1024 * 1024) {
+          // PDF — 본문 텍스트 자동 추출 (20MB 한도, 자수 30,000자까지 저장)
           extractPdfText(f).then(text => {
-            if (text) entry.content = text.slice(0, 5000);
+            if (text) entry.content = text.slice(0, 30000);
           }).catch(() => {}).finally(() => {
             arr.unshift(entry);
             if (--pending === 0) finalize();
