@@ -397,6 +397,101 @@
     .imwon-empty { padding: 1.5rem; text-align: center; color: #94A3B8; font-size: 0.875rem; }
     .imwon-error { padding: 0.75rem 1rem; background: #FEE2E2; border-radius: 8px; color: #991B1B; font-size: 0.8125rem; }
     html.dark .imwon-error { background: rgba(220, 38, 38, 0.15); color: #FCA5A5; }
+
+    /* 사용자 등록 항목 — 뱃지·삭제 버튼 */
+    .imwon-kpi-card { position: relative; }
+    .imwon-kpi-user-badge {
+      position: absolute; top: 0.5rem; left: 0.875rem;
+      font-size: 0.6rem; padding: 0.05rem 0.4rem; border-radius: 9999px;
+      background: #6B8DB5; color: #FFFFFF; font-weight: 600; letter-spacing: 0.02em;
+    }
+    .imwon-kpi-delete {
+      position: absolute; bottom: 0.5rem; right: 0.5rem;
+      width: 22px; height: 22px; border-radius: 4px;
+      background: transparent; border: 1px solid #DC2626; color: #DC2626;
+      font-size: 0.7rem; cursor: pointer; line-height: 1;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .imwon-kpi-delete:hover { background: #FEE2E2; }
+    html.dark .imwon-kpi-delete:hover { background: rgba(220,38,38,0.2); }
+
+    .imwon-card-item-header { display: flex; align-items: center; gap: 0.375rem; margin-bottom: 0.125rem; }
+    .imwon-card-item-header .imwon-card-name { flex: 1; min-width: 0; }
+    .imwon-card-user-badge {
+      font-size: 0.6rem; padding: 0.05rem 0.4rem; border-radius: 9999px;
+      background: #6B8DB5; color: #FFFFFF; font-weight: 600; letter-spacing: 0.02em;
+    }
+    .imwon-card-delete {
+      width: 22px; height: 22px; border-radius: 4px;
+      background: transparent; border: 1px solid #DC2626; color: #DC2626;
+      font-size: 0.7rem; cursor: pointer; line-height: 1;
+      display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    }
+    .imwon-card-delete:hover { background: #FEE2E2; }
+    html.dark .imwon-card-delete:hover { background: rgba(220,38,38,0.2); }
+
+    .imwon-memo-item {
+      display: flex; align-items: flex-start; justify-content: space-between; gap: 0.5rem;
+      padding: 0.5rem 0.75rem; background: #F7F9FC; border-radius: 6px; font-size: 0.8125rem;
+    }
+    html.dark .imwon-memo-item { background: #0F1B2D; }
+    .imwon-memo-body { flex: 1; min-width: 0; }
+    .imwon-memo-delete {
+      width: 22px; height: 22px; border-radius: 4px;
+      background: transparent; border: 1px solid #CBD5E1; color: #64748B;
+      font-size: 0.7rem; cursor: pointer; line-height: 1; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .imwon-memo-delete:hover { background: #FEE2E2; color: #DC2626; border-color: #DC2626; }
+    html.dark .imwon-memo-delete:hover { background: rgba(220,38,38,0.2); color: #FCA5A5; }
+
+    /* 통합 보고서 모달 콘텐츠 */
+    .merged-report-content h1 { font-size: 1.25rem; font-weight: 700; color: #0B2545; margin: 0 0 0.25rem 0; }
+    html.dark .merged-report-content h1 { color: #EEF2F8; }
+    .merged-report-content h2 { font-size: 1rem; font-weight: 700; color: #0B2545; margin: 1rem 0 0.5rem 0; padding-bottom: 0.25rem; border-bottom: 1px solid #E2E8F0; }
+    html.dark .merged-report-content h2 { color: #EEF2F8; border-bottom-color: #1F3A5F; }
+    .merged-report-content h3 { font-size: 0.95rem; font-weight: 700; color: #0B2545; margin: 0 0 0.375rem 0; }
+    html.dark .merged-report-content h3 { color: #EEF2F8; }
+    .merged-report-card {
+      border: 1px solid #E2E8F0; border-radius: 8px; padding: 1rem; margin-bottom: 0.875rem;
+      page-break-inside: avoid;
+    }
+    html.dark .merged-report-card { border-color: #1F3A5F; }
+    .merged-report-card-meta { font-size: 0.75rem; color: #64748B; margin-bottom: 0.5rem; }
+    .merged-report-toc { list-style: decimal inside; padding: 0; margin: 0.5rem 0 0 0; font-size: 0.8125rem; color: #475569; line-height: 1.7; }
+    html.dark .merged-report-toc { color: #CBD5E1; }
+    .merged-report-row { display: flex; gap: 0.5rem; font-size: 0.8125rem; margin-bottom: 0.25rem; }
+    .merged-report-row .k { color: #64748B; min-width: 80px; }
+    .merged-report-row .v { color: #0B2545; flex: 1; }
+    html.dark .merged-report-row .v { color: #EEF2F8; }
+
+    /* 인쇄 / PDF 저장 — 통합 보고서만 출력 */
+    @media print {
+      @page { margin: 14mm; size: A4; }
+      html, body { background: #FFFFFF !important; color: #000000 !important; }
+      body * { visibility: hidden; }
+      #mergedReportModal,
+      #mergedReportModal * { visibility: visible; }
+      #mergedReportModal {
+        position: absolute !important; left: 0; top: 0; right: 0;
+        background: #FFFFFF !important;
+        display: block !important;
+        z-index: 10000;
+      }
+      .modal-backdrop { background: #FFFFFF !important; }
+      .merged-report-box {
+        max-width: 100% !important; max-height: none !important;
+        background: #FFFFFF !important; box-shadow: none !important; border: none !important;
+        margin: 0 !important; border-radius: 0 !important;
+      }
+      .merged-report-toolbar,
+      .merged-report-footer { display: none !important; }
+      .merged-report-content { overflow: visible !important; max-height: none !important; padding: 0 !important; }
+      .merged-report-content h1, .merged-report-content h2, .merged-report-content h3 { color: #000 !important; border-color: #000 !important; }
+      .merged-report-card { border-color: #888 !important; box-shadow: none !important; page-break-inside: avoid; }
+      .merged-report-card-meta, .merged-report-row .k, .merged-report-toc { color: #444 !important; }
+      .merged-report-row .v, .merged-report-content { color: #000 !important; }
+    }
   </style>
 </head>
 <body class="font-pretendard antialiased">
@@ -572,12 +667,15 @@
 
     <!-- 1. 홈 -->
     <section id="tab-home" class="tab-pane">
-      <div class="flex items-end justify-between flex-wrap gap-2 mb-4">
+      <div class="flex items-end justify-between flex-wrap gap-2 mb-3">
         <div>
           <h1 id="homeGreeting" class="text-2xl font-bold text-navy-900 dark:text-navy-50">대표님, 오늘도 좋은 하루 보내세요</h1>
           <p id="homeDateLine" class="text-sm text-slate-500 dark:text-slate-400"></p>
         </div>
         <div class="flex gap-2">
+          <button id="homeEditCompanyBtn" class="px-3 py-1.5 text-xs rounded-md border border-navy-500 text-navy-900 dark:text-navy-50 dark:border-navy-500 hover:bg-navy-50 dark:hover:bg-navy-800 font-semibold" title="회사명·대표·임원 이름 편집">
+            ✏️ 회사·임원 정보 편집
+          </button>
           <button id="homeRefreshBtn" class="px-3 py-1.5 text-xs rounded-md border border-slate-300 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-navy-800">
             새로고침
           </button>
@@ -586,6 +684,43 @@
           </button>
         </div>
       </div>
+
+      <!-- 회사·임원 인라인 편집 (펼침) -->
+      <details id="homeIdentityEdit" class="imw-card mb-4 group">
+        <summary class="cursor-pointer list-none flex items-center justify-between text-sm font-semibold text-navy-900 dark:text-navy-50">
+          <span>🏢 우리 회사 정보 — 회사명·대표·임원 이름을 직접 입력하세요</span>
+          <span class="text-xs text-slate-500 group-open:rotate-90 inline-block transition-transform">▶</span>
+        </summary>
+        <div class="mt-3 grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-semibold mb-1 text-slate-600 dark:text-slate-300">회사명</label>
+            <input id="inlineCompanyName" type="text" placeholder="예: ○○산업(주)"
+                   class="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-900 text-sm" />
+          </div>
+          <div>
+            <label class="block text-xs font-semibold mb-1 text-slate-600 dark:text-slate-300">대표 호칭</label>
+            <input id="inlineCeoName" type="text" placeholder="예: 홍길동"
+                   class="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-900 text-sm" />
+          </div>
+        </div>
+        <div class="mt-3">
+          <div class="text-xs font-semibold mb-1.5 text-slate-600 dark:text-slate-300">임원 이름·부서 (총 6명)</div>
+          <div id="inlineExecutivesList" class="grid grid-cols-1 md:grid-cols-2 gap-2"></div>
+        </div>
+        <div class="flex items-center justify-between gap-2 mt-3 flex-wrap">
+          <p class="text-[11px] text-slate-500">비워두면 데모 기본값(한울정공·김임원 등)이 사용됩니다.</p>
+          <div class="flex gap-2">
+            <button id="inlineResetBtn" type="button"
+                    class="px-3 py-1.5 text-xs rounded-md border border-slate-300 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-navy-800">
+              기본값 복원
+            </button>
+            <button id="inlineSaveBtn" type="button"
+                    class="px-4 py-1.5 text-xs rounded-md bg-navy-900 text-white hover:bg-navy-800 font-semibold">
+              저장하고 대시보드에 반영
+            </button>
+          </div>
+        </div>
+      </details>
 
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <!-- 좌측 컬럼 -->
@@ -658,10 +793,15 @@
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <div class="lg:col-span-2 space-y-4">
           <div id="dropZone"
-               class="imw-card border-2 border-dashed border-slate-300 dark:border-navy-800 hover:border-navy-500 transition cursor-pointer text-center py-10">
+               class="imw-card border-2 border-dashed border-slate-300 dark:border-navy-800 hover:border-navy-500 transition cursor-pointer text-center py-8">
             <div class="text-4xl mb-2">📂</div>
-            <div class="text-sm font-semibold text-navy-900 dark:text-navy-50">파일을 드래그하거나 클릭하여 업로드</div>
-            <div class="text-xs text-slate-500 mt-1">지원: PDF · 엑셀 · 이미지 · mp3/m4a · docx · txt</div>
+            <div class="text-base font-bold text-navy-900 dark:text-navy-50">⬇ 파일 업로드</div>
+            <div class="text-sm text-slate-600 dark:text-slate-300 mt-1">이 영역을 클릭하거나, 파일을 끌어다 놓으세요</div>
+            <div class="text-[11px] text-slate-500 mt-2">PDF · 엑셀 · 이미지 · 녹음(mp3/m4a) · Word · 텍스트 · 다중 선택 가능</div>
+            <button type="button" id="fileBrowseBtn"
+                    class="mt-3 inline-flex items-center gap-1 px-4 py-2 text-sm rounded-md bg-navy-900 text-white hover:bg-navy-800 font-semibold">
+              📁 파일 선택...
+            </button>
             <input id="fileInput" type="file" multiple
                    accept=".pdf,.xls,.xlsx,.csv,.png,.jpg,.jpeg,.mp3,.m4a,.wav,.docx,.txt"
                    class="hidden" />
@@ -680,6 +820,20 @@
               <button data-filter="active"   class="report-filter-btn active px-3 py-1.5 font-semibold border-b-2 border-navy-900 dark:border-navy-500 text-navy-900 dark:text-navy-50">활성 <span class="text-slate-500" data-count="active">(0)</span></button>
               <button data-filter="archived" class="report-filter-btn px-3 py-1.5 text-slate-500 border-b-2 border-transparent hover:text-navy-900">아카이브 <span data-count="archived">(0)</span></button>
               <button data-filter="all"      class="report-filter-btn px-3 py-1.5 text-slate-500 border-b-2 border-transparent hover:text-navy-900">전체 <span data-count="all">(0)</span></button>
+            </div>
+            <!-- 일괄 선택 액션 바 -->
+            <div id="reportBatchBar" class="flex items-center justify-between gap-2 mb-3 px-3 py-2 bg-slate-50 dark:bg-navy-900/40 border border-slate-200 dark:border-navy-800 rounded text-xs">
+              <label class="flex items-center gap-2 cursor-pointer">
+                <input id="reportSelectAll" type="checkbox" class="w-4 h-4 rounded cursor-pointer" />
+                <span class="font-semibold text-navy-900 dark:text-navy-50">전체 선택</span>
+                <span id="reportSelectedCount" class="text-slate-500">0건 선택됨</span>
+              </label>
+              <button id="generateMergedReportBtn" type="button"
+                      class="px-3 py-1.5 text-xs rounded-md bg-navy-900 text-white hover:bg-navy-800 font-semibold disabled:opacity-40 disabled:cursor-not-allowed"
+                      disabled
+                      title="선택한 보고서들을 합쳐 인쇄·PDF 저장 가능한 1장 통합 문서로 만듭니다">
+                📑 통합 보고서 생성
+              </button>
             </div>
             <ul id="reportFileList" class="space-y-1 text-sm"></ul>
           </div>
@@ -888,6 +1042,29 @@
     </section>
   </main>
 
+  <!-- ============== 통합 보고서 모달 ============== -->
+  <div id="mergedReportModal" class="modal-backdrop">
+    <div class="merged-report-box bg-white dark:bg-navy-900 rounded-xl w-full max-w-4xl mx-4 flex flex-col" style="max-height: 92vh;">
+      <div class="merged-report-toolbar flex items-center justify-between px-5 py-3 border-b border-slate-200 dark:border-navy-800">
+        <h2 class="text-base font-bold text-navy-900 dark:text-navy-50">📑 통합 보고서</h2>
+        <div class="flex gap-2">
+          <button id="printMergedBtn" type="button"
+                  class="px-3 py-1.5 text-xs rounded-md bg-navy-900 text-white hover:bg-navy-800 font-semibold">
+            🖨 인쇄 / PDF 저장
+          </button>
+          <button id="closeMergedBtn" type="button"
+                  class="px-3 py-1.5 text-xs rounded-md border border-slate-300 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-navy-800">
+            닫기
+          </button>
+        </div>
+      </div>
+      <div id="mergedReportContent" class="merged-report-content overflow-y-auto px-6 py-5 flex-1 text-sm"></div>
+      <div class="merged-report-footer px-5 py-2 border-t border-slate-200 dark:border-navy-800 text-[11px] text-slate-500">
+        ⓘ 인쇄 다이얼로그에서 <b>"PDF로 저장"</b>을 선택하면 PDF 파일로 저장됩니다.
+      </div>
+    </div>
+  </div>
+
   <!-- ============== 푸터 ============== -->
   <footer class="border-t border-slate-200 dark:border-navy-800 mt-10">
     <div class="max-w-screen-2xl mx-auto px-4 py-6 text-center text-xs text-slate-500 dark:text-slate-400">
@@ -896,8 +1073,9 @@
   </footer>
 
   <!-- ============== 빌더 B 모듈 (있으면 로드) ============== -->
-  <script src="assets/data.js" onerror="console.warn('data.js 미존재 — 더미 데이터 사용')"></script>
-  <script src="assets/modules.js" onerror="console.warn('modules.js 미존재 — placeholder 사용')"></script>
+  <!-- v는 캐시 우회용 — modules.js/data.js 갱신 시 숫자 증가 -->
+  <script src="assets/data.js?v=3" onerror="console.warn('data.js 미존재 — 더미 데이터 사용')"></script>
+  <script src="assets/modules.js?v=3" onerror="console.warn('modules.js 미존재 — placeholder 사용')"></script>
 
   <!-- ============== 메인 앱 스크립트 ============== -->
   <script>
@@ -1542,6 +1720,23 @@
 
     let _reportFilter  = 'active';
     let _reportSearchQ = '';
+    // 통합 보고서용 — 선택된 파일의 (전체 배열 기준) 인덱스 집합
+    let _selectedReports = new Set();
+
+    function updateReportBatchBar() {
+      const all = loadReports();
+      const total = all.length;
+      const sel = _selectedReports.size;
+      const countEl = document.getElementById('reportSelectedCount');
+      const btn = document.getElementById('generateMergedReportBtn');
+      const selectAll = document.getElementById('reportSelectAll');
+      if (countEl) countEl.textContent = sel + '건 선택됨';
+      if (btn) btn.disabled = (sel === 0);
+      if (selectAll) {
+        selectAll.checked = (sel > 0 && sel === total);
+        selectAll.indeterminate = (sel > 0 && sel < total);
+      }
+    }
 
     function renderReportFileList() {
       const list = $('#reportFileList');
@@ -1584,6 +1779,20 @@
         const li = document.createElement('li');
         li.className = 'flex items-center justify-between p-2 rounded hover:bg-slate-50 dark:hover:bg-navy-800/50 ' + (archived ? 'opacity-70' : '');
 
+        // 체크박스 (통합 보고서 선택용)
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.className = 'report-checkbox w-4 h-4 mr-2 rounded cursor-pointer shrink-0';
+        checkbox.checked = _selectedReports.has(idx);
+        checkbox.title = '통합 보고서에 포함';
+        checkbox.addEventListener('change', (e) => {
+          e.stopPropagation();
+          if (checkbox.checked) _selectedReports.add(idx);
+          else                  _selectedReports.delete(idx);
+          updateReportBatchBar();
+        });
+        li.appendChild(checkbox);
+
         // 좌: 아이콘 + 이름·메타
         const leftBtn = document.createElement('button');
         leftBtn.type = 'button';
@@ -1607,9 +1816,10 @@
         archBtn.textContent = archived ? '↺ 복원' : '📦 아카이브';
         const delBtn = document.createElement('button');
         delBtn.type = 'button';
-        delBtn.className = 'text-[11px] px-2 py-1 rounded text-signal-red hover:bg-red-50 dark:hover:bg-red-900/20';
+        delBtn.className = 'text-[11px] px-2 py-1 rounded text-signal-red hover:bg-red-50 dark:hover:bg-red-900/20 border border-signal-red/30';
         delBtn.dataset.action = 'delete';
-        delBtn.textContent = '🗑';
+        delBtn.title = '영구 삭제';
+        delBtn.textContent = '🗑 삭제';
         actions.appendChild(archBtn);
         actions.appendChild(delBtn);
 
@@ -1644,6 +1854,130 @@
         });
         list.appendChild(li);
       });
+      updateReportBatchBar();
+    }
+
+    function generateMergedReport() {
+      const all = loadReports();
+      const selected = all
+        .map((f, i) => ({ f: f, idx: i }))
+        .filter(x => _selectedReports.has(x.idx));
+      if (selected.length === 0) { alert('선택한 보고서가 없습니다.'); return; }
+
+      const D = getDemo();
+      const company = (D.company && D.company.name) || '회사';
+      const ceo = localStorage.getItem(LS.CEO_NAME) || (D.company && D.company.ceo) || '대표';
+      const today = new Date().toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' });
+
+      const content = document.getElementById('mergedReportContent');
+      while (content.firstChild) content.removeChild(content.firstChild);
+
+      // 헤더
+      const meta = document.createElement('div');
+      meta.style.borderBottom = '2px solid #0B2545';
+      meta.style.paddingBottom = '0.75rem';
+      meta.style.marginBottom = '1rem';
+      const h1 = document.createElement('h1');
+      h1.textContent = company + ' — 통합 보고서';
+      meta.appendChild(h1);
+      const sub = document.createElement('div');
+      sub.style.fontSize = '0.8125rem';
+      sub.style.color = '#475569';
+      sub.style.marginTop = '0.25rem';
+      sub.textContent = '작성일: ' + today + '  ·  대표: ' + ceo + '  ·  포함 보고서: ' + selected.length + '건';
+      meta.appendChild(sub);
+      content.appendChild(meta);
+
+      // 목차
+      const tocH = document.createElement('h2');
+      tocH.textContent = '📋 목차';
+      content.appendChild(tocH);
+      const toc = document.createElement('ol');
+      toc.className = 'merged-report-toc';
+      selected.forEach(({ f }) => {
+        const it = document.createElement('li');
+        it.textContent = f.name + '   (' + (f.uploadedAt || '-') + (f.status === 'archived' ? ' · 아카이브' : '') + ')';
+        toc.appendChild(it);
+      });
+      content.appendChild(toc);
+
+      // 각 파일별 카드
+      const detailH = document.createElement('h2');
+      detailH.textContent = '📂 보고서별 상세';
+      content.appendChild(detailH);
+
+      selected.forEach(({ f }, i) => {
+        const card = document.createElement('div');
+        card.className = 'merged-report-card';
+
+        const h3 = document.createElement('h3');
+        h3.textContent = '#' + (i + 1) + '. ' + f.name;
+        card.appendChild(h3);
+
+        const cmeta = document.createElement('div');
+        cmeta.className = 'merged-report-card-meta';
+        cmeta.textContent = formatBytes(f.size) + '  ·  ' + (f.uploadedAt || '-') + (f.status === 'archived' ? '  ·  📦 아카이브 (' + (f.archivedAt || '') + ')' : '  ·  활성');
+        card.appendChild(cmeta);
+
+        // 메타 행
+        const rows = [
+          { k: '파일 형식', v: (f.type || '').split('/').pop() || '미지정' },
+          { k: '파일 크기', v: formatBytes(f.size) },
+          { k: '업로드',     v: f.uploadedAt || '-' }
+        ];
+        if (f.status === 'archived') rows.push({ k: '아카이브', v: f.archivedAt || '-' });
+        rows.forEach(r => {
+          const row = document.createElement('div');
+          row.className = 'merged-report-row';
+          const k = document.createElement('span'); k.className = 'k'; k.textContent = r.k;
+          const v = document.createElement('span'); v.className = 'v'; v.textContent = r.v;
+          row.appendChild(k); row.appendChild(v);
+          card.appendChild(row);
+        });
+
+        // AI 요약 (있으면)
+        if (f.summary) {
+          const sumWrap = document.createElement('div');
+          sumWrap.style.marginTop = '0.625rem';
+          sumWrap.style.paddingTop = '0.625rem';
+          sumWrap.style.borderTop = '1px dashed #CBD5E1';
+          const sh = document.createElement('div');
+          sh.style.fontWeight = '600';
+          sh.style.fontSize = '0.8125rem';
+          sh.style.marginBottom = '0.25rem';
+          sh.textContent = 'AI 요약';
+          sumWrap.appendChild(sh);
+          const sp = document.createElement('div');
+          sp.style.fontSize = '0.8125rem';
+          sp.style.lineHeight = '1.6';
+          sp.style.whiteSpace = 'pre-wrap';
+          sp.textContent = f.summary;
+          sumWrap.appendChild(sp);
+          card.appendChild(sumWrap);
+        } else {
+          const note = document.createElement('div');
+          note.style.marginTop = '0.5rem';
+          note.style.fontSize = '0.75rem';
+          note.style.color = '#94A3B8';
+          note.textContent = 'ⓘ AI 요약 미생성. 보고서 메뉴에서 이 파일을 클릭하시면 1줄 결론 + 3줄 핵심 + 3대 액션이 자동으로 생성·저장됩니다.';
+          card.appendChild(note);
+        }
+
+        // 비고란
+        const noteRow = document.createElement('div');
+        noteRow.style.marginTop = '0.625rem';
+        noteRow.style.paddingTop = '0.625rem';
+        noteRow.style.borderTop = '1px solid #E2E8F0';
+        noteRow.style.fontSize = '0.75rem';
+        noteRow.style.color = '#94A3B8';
+        noteRow.textContent = '비고: ___________________________________________';
+        card.appendChild(noteRow);
+
+        content.appendChild(card);
+      });
+
+      // 모달 표시
+      document.getElementById('mergedReportModal').classList.add('active');
     }
 
     function fileIcon(name) {
@@ -1712,6 +2046,29 @@
           renderReportFileList();
         });
       }
+      // 전체 선택 체크박스
+      const selectAll = $('#reportSelectAll');
+      if (selectAll) {
+        selectAll.addEventListener('change', () => {
+          const all = loadReports();
+          if (selectAll.checked) {
+            _selectedReports = new Set(all.map((_, i) => i));
+          } else {
+            _selectedReports.clear();
+          }
+          renderReportFileList();
+        });
+      }
+      // 통합 보고서 생성
+      const genBtn = $('#generateMergedReportBtn');
+      if (genBtn) genBtn.addEventListener('click', generateMergedReport);
+      // 인쇄 / PDF 저장
+      const printBtn = $('#printMergedBtn');
+      if (printBtn) printBtn.addEventListener('click', () => { window.print(); });
+      const closeMergedBtn = $('#closeMergedBtn');
+      if (closeMergedBtn) closeMergedBtn.addEventListener('click', () => {
+        $('#mergedReportModal').classList.remove('active');
+      });
       // 음성 메모
       const vBtn = $('#voiceMemoBtn');
       if (vBtn) {
@@ -2359,8 +2716,141 @@
       if (refreshBtn) refreshBtn.addEventListener('click', () => renderHome());
       if (briefBtn)   briefBtn.addEventListener('click',   () => speakCurrentPage());
 
+      // 홈 — 회사명·임원 인라인 편집
+      bindHomeIdentityEdit();
+
       // 알림 (권한 있을 때만 비차단 호출)
       setTimeout(checkNotifications, 1500);
+    }
+
+    // ===================== 홈 — 회사·임원 인라인 편집 =====================
+    function buildInlineExecutives() {
+      const container = document.getElementById('inlineExecutivesList');
+      if (!container) return;
+      while (container.firstChild) container.removeChild(container.firstChild);
+
+      // 원본 임원 명단을 placeholder로 (오버라이드 적용 전)
+      const baseRaw = (_ORIGINAL_DEMO && _ORIGINAL_DEMO.kpi && Array.isArray(_ORIGINAL_DEMO.kpi.individuals))
+        ? _ORIGINAL_DEMO
+        : (window.IMWON_DEMO || FALLBACK_DEMO);
+      const execs = (baseRaw.kpi && Array.isArray(baseRaw.kpi.individuals)) ? baseRaw.kpi.individuals : [];
+
+      let overrides = [];
+      try { overrides = JSON.parse(localStorage.getItem(LS.EXECUTIVES) || '[]'); } catch (e) {}
+      const overrideByIdx = {};
+      overrides.forEach(o => { if (o && typeof o.idx === 'number') overrideByIdx[o.idx] = o; });
+
+      execs.forEach((ind, idx) => {
+        const overr = overrideByIdx[idx] || {};
+        const row = document.createElement('div');
+        row.className = 'grid grid-cols-2 gap-1.5';
+
+        const nameInput = document.createElement('input');
+        nameInput.type = 'text';
+        nameInput.placeholder = ind.name || ('임원 ' + (idx + 1) + ' 이름');
+        nameInput.value = overr.name || '';
+        nameInput.dataset.inlineExecIdx = String(idx);
+        nameInput.dataset.inlineExecField = 'name';
+        nameInput.className = 'inline-exec-input px-2 py-1.5 border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-900 text-xs';
+
+        const deptInput = document.createElement('input');
+        deptInput.type = 'text';
+        deptInput.placeholder = ind.dept || '부서';
+        deptInput.value = overr.dept || '';
+        deptInput.dataset.inlineExecIdx = String(idx);
+        deptInput.dataset.inlineExecField = 'dept';
+        deptInput.className = 'inline-exec-input px-2 py-1.5 border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-900 text-xs';
+
+        row.appendChild(nameInput);
+        row.appendChild(deptInput);
+        container.appendChild(row);
+      });
+    }
+
+    function bindHomeIdentityEdit() {
+      const editBtn  = $('#homeEditCompanyBtn');
+      const details  = $('#homeIdentityEdit');
+      const saveBtn  = $('#inlineSaveBtn');
+      const resetBtn = $('#inlineResetBtn');
+
+      function fillInputs() {
+        const cn = $('#inlineCompanyName');
+        const ce = $('#inlineCeoName');
+        if (cn) cn.value = localStorage.getItem(LS.COMPANY_NAME) || '';
+        if (ce) ce.value = localStorage.getItem(LS.CEO_NAME) || '';
+        buildInlineExecutives();
+      }
+
+      // "회사·임원 정보 편집" 헤더 버튼 → details 펼치기 + 포커스
+      if (editBtn && details) {
+        editBtn.addEventListener('click', () => {
+          details.open = true;
+          fillInputs();
+          const cn = $('#inlineCompanyName');
+          if (cn) cn.focus();
+          details.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+      }
+
+      // details 자체 펼침 시에도 자동 채우기
+      if (details) {
+        details.addEventListener('toggle', () => {
+          if (details.open) fillInputs();
+        });
+      }
+
+      // 저장 버튼
+      if (saveBtn) {
+        saveBtn.addEventListener('click', () => {
+          const cn = $('#inlineCompanyName');
+          const ce = $('#inlineCeoName');
+          if (cn) localStorage.setItem(LS.COMPANY_NAME, (cn.value || '').trim());
+          if (ce) localStorage.setItem(LS.CEO_NAME,     (ce.value || '').trim());
+
+          // 임원 오버라이드 수집
+          const inputs = $$('.inline-exec-input');
+          const buf = {};
+          inputs.forEach(inp => {
+            const idx = parseInt(inp.dataset.inlineExecIdx, 10);
+            const field = inp.dataset.inlineExecField;
+            const v = (inp.value || '').trim();
+            if (isNaN(idx) || !field) return;
+            if (!buf[idx]) buf[idx] = { idx: idx };
+            if (v) buf[idx][field] = v;
+          });
+          const arr = Object.values(buf).filter(x => x.name || x.dept);
+          if (arr.length > 0) localStorage.setItem(LS.EXECUTIVES, JSON.stringify(arr));
+          else                localStorage.removeItem(LS.EXECUTIVES);
+
+          // 즉시 반영
+          applyOverridesToDemo();
+          renderActiveTab();
+
+          // 시각적 피드백
+          const orig = saveBtn.textContent;
+          saveBtn.textContent = '✓ 반영 완료';
+          saveBtn.classList.add('bg-signal-green');
+          saveBtn.classList.remove('bg-navy-900');
+          setTimeout(() => {
+            saveBtn.textContent = orig || '저장하고 대시보드에 반영';
+            saveBtn.classList.remove('bg-signal-green');
+            saveBtn.classList.add('bg-navy-900');
+          }, 1400);
+        });
+      }
+
+      // 기본값 복원
+      if (resetBtn) {
+        resetBtn.addEventListener('click', () => {
+          if (!confirm('회사명·대표·임원 이름을 모두 데모 기본값으로 되돌리시겠습니까?')) return;
+          localStorage.removeItem(LS.COMPANY_NAME);
+          localStorage.removeItem(LS.CEO_NAME);
+          localStorage.removeItem(LS.EXECUTIVES);
+          applyOverridesToDemo();
+          renderActiveTab();
+          fillInputs();
+        });
+      }
     }
 
     // ===================== 시작 =====================

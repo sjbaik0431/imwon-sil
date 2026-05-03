@@ -342,6 +342,27 @@
         const card = el('div', { cls: 'imwon-kpi-card status-' + (k.status || 'gray') });
         const dot = el('span', { cls: 'imwon-kpi-dot status-' + (k.status || 'gray') });
         card.appendChild(dot);
+
+        // 사용자 등록 KPI에는 "내 KPI" 뱃지 + 삭제 버튼
+        if (k._isUser) {
+          const badge = el('span', { cls: 'imwon-kpi-user-badge', text: '내 KPI' });
+          card.appendChild(badge);
+          const delBtn = el('button', {
+            cls: 'imwon-kpi-delete',
+            text: '✕',
+            attrs: { type: 'button', title: '이 KPI 삭제' }
+          });
+          delBtn.addEventListener('click', function (e) {
+            e.stopPropagation();
+            if (!confirm('"' + (k.name || 'KPI') + '" 항목을 삭제하시겠습니까?')) return;
+            const arr = LS.get('imwon.userKpis', []) || [];
+            if (typeof k._userIdx === 'number') arr.splice(k._userIdx, 1);
+            LS.set('imwon.userKpis', arr);
+            renderKPI();
+          });
+          card.appendChild(delBtn);
+        }
+
         card.appendChild(el('div', { cls: 'imwon-kpi-name', text: k.name }));
         const valLine = el('div', { cls: 'imwon-kpi-val' });
         const cur = k.unit === '원' ? formatKRW(k.current) : (nf(k.current, k.unit === '%' ? 1 : 0) + (k.unit && k.unit !== '원' ? k.unit : ''));
@@ -365,7 +386,9 @@
       {
         key: 'company', label: '회사',
         render: function (p) {
-          const userKpis = LS.get('imwon.userKpis', []);
+          const userKpis = (LS.get('imwon.userKpis', []) || []).map(function (k, i) {
+            return Object.assign({}, k, { _isUser: true, _userIdx: i });
+          });
           renderKpiCards(p, (data.company || []).concat(userKpis));
         }
       },
@@ -775,10 +798,37 @@
       allCards.forEach(function (card, idx) {
         const hay = (card.name + ' ' + card.company + ' ' + card.title + ' ' + (card.tags || []).join(' ')).toLowerCase();
         if (q && !hay.includes(q)) return;
+        const isUser = idx >= cards.length;
+        const userIdx = idx - cards.length;
         const item = el('div', { cls: 'imwon-card-item' + (idx === _selectedCardIdx ? ' active' : '') });
         const dInactive = calcDDay(card.lastContact);
         const stale = dInactive !== null && dInactive < -180;
-        item.appendChild(el('div', { cls: 'imwon-card-name', text: card.name + (stale ? '  ⚠' : '') }));
+
+        // 헤더 영역 (이름 + 사용자 명함 삭제 버튼)
+        const header = el('div', { cls: 'imwon-card-item-header' });
+        const nameEl = el('div', { cls: 'imwon-card-name', text: card.name + (stale ? '  ⚠' : '') });
+        header.appendChild(nameEl);
+        if (isUser) {
+          const userBadge = el('span', { cls: 'imwon-card-user-badge', text: 'OCR 등록' });
+          header.appendChild(userBadge);
+          const delBtn = el('button', {
+            cls: 'imwon-card-delete',
+            text: '✕',
+            attrs: { type: 'button', title: '이 명함 삭제' }
+          });
+          delBtn.addEventListener('click', function (e) {
+            e.stopPropagation();
+            if (!confirm('"' + card.name + '" 명함을 삭제하시겠습니까?')) return;
+            const arr = LS.get('imwon.userCards', []) || [];
+            arr.splice(userIdx, 1);
+            LS.set('imwon.userCards', arr);
+            _selectedCardIdx = 0;
+            renderCards();
+          });
+          header.appendChild(delBtn);
+        }
+        item.appendChild(header);
+
         item.appendChild(el('div', { cls: 'imwon-card-company', text: card.company + ' · ' + card.title }));
         // 관계 강도 막대
         const bar = el('div', { cls: 'imwon-card-relation-bar' });
@@ -790,7 +840,8 @@
         item.appendChild(bar);
         item.appendChild(el('div', { cls: 'imwon-card-relation-pct', text: '관계 ' + (card.relationship || 0) + '점' }));
         if (stale) item.appendChild(el('div', { cls: 'imwon-card-stale', text: '6개월 이상 미접촉' }));
-        item.addEventListener('click', function () {
+        item.addEventListener('click', function (e) {
+          if (e.target.closest('.imwon-card-delete')) return;
           _selectedCardIdx = idx;
           renderList();
           renderDetail();
@@ -841,10 +892,25 @@
       const memoTitle = el('h4', { cls: 'imwon-memo-title', text: '메모 (' + memos.length + ')' });
       detail.appendChild(memoTitle);
       const memoList = el('div', { cls: 'imwon-memo-list' });
-      memos.forEach(function (m) {
+      memos.forEach(function (m, mi) {
         const mEl = el('div', { cls: 'imwon-memo-item' });
-        mEl.appendChild(el('div', { cls: 'imwon-memo-date', text: m.date }));
-        mEl.appendChild(el('div', { cls: 'imwon-memo-text', text: m.text }));
+        const mBody = el('div', { cls: 'imwon-memo-body' });
+        mBody.appendChild(el('div', { cls: 'imwon-memo-date', text: m.date }));
+        mBody.appendChild(el('div', { cls: 'imwon-memo-text', text: m.text }));
+        mEl.appendChild(mBody);
+        // 메모별 삭제 버튼
+        const memoDel = el('button', {
+          cls: 'imwon-memo-delete',
+          text: '✕',
+          attrs: { type: 'button', title: '이 메모 삭제' }
+        });
+        memoDel.addEventListener('click', function () {
+          if (!confirm('이 메모를 삭제하시겠습니까?')) return;
+          memos.splice(mi, 1);
+          LS.set(memoKey, memos);
+          renderDetail();
+        });
+        mEl.appendChild(memoDel);
         memoList.appendChild(mEl);
       });
       detail.appendChild(memoList);
