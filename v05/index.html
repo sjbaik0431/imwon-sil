@@ -5,6 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>임원실 Imwon.Sil — 경영 종합 대시보드</title>
   <meta name="description" content="한국 중소기업 CEO·임원용 경영 종합 대시보드" />
+  <!-- 캐시 무효화 — 매번 최신 코드 로드 -->
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <meta http-equiv="Expires" content="0" />
 
   <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
@@ -1145,10 +1149,10 @@
   </footer>
 
   <!-- ============== 빌더 B 모듈 (있으면 로드) ============== -->
-  <!-- 캐시 우회 — 매 리로드마다 새 query로 강제 갱신 -->
+  <!-- 캐시 우회 — 매 리로드마다 timestamp로 강제 갱신 -->
   <script>
     (function () {
-      const v = '5-' + Math.floor(Date.now() / 60000); // 분 단위 자동 갱신
+      const v = Date.now(); // 매 로드마다 새 query
       document.write('<script src="assets/data.js?v=' + v + '" onerror="console.warn(\'data.js 미존재\')"><\/script>');
       document.write('<script src="assets/modules.js?v=' + v + '" onerror="console.warn(\'modules.js 미존재\')"><\/script>');
     })();
@@ -1451,6 +1455,59 @@
         if (fields.length > 0) merged.sources.push({ name: r.name, fields: fields });
       });
       return merged;
+    }
+
+    // 업로드 후 추출 결과 토스트 알림 (3.5초 자동 사라짐)
+    function showExtractionToast(uploadedCount) {
+      // 기존 토스트 제거
+      const old = document.getElementById('imwonToast');
+      if (old) old.remove();
+
+      // 추출 데이터 집계
+      const ext = window.__IMWON_EXTRACTED__;
+      const fields = [];
+      if (ext) {
+        if (ext.finance) {
+          if (ext.finance.revenue !== undefined)         fields.push('매출');
+          if (ext.finance.operatingProfit !== undefined) fields.push('영업이익');
+          if (ext.finance.cashBalance !== undefined)     fields.push('현금');
+          if (ext.finance.creditLine !== undefined)      fields.push('여신');
+          if (ext.finance.accountsReceivable !== undefined) fields.push('매출채권');
+          if (ext.finance.operatingMargin !== undefined) fields.push('이익률');
+          if (ext.finance.yieldRate !== undefined)       fields.push('수율');
+        }
+        if (ext.hr) {
+          if (ext.hr.totalEmployees   !== undefined) fields.push('재직자');
+          if (ext.hr.turnoverRate     !== undefined) fields.push('이직률');
+          if (ext.hr.leaveUsage       !== undefined) fields.push('연차');
+          if (ext.hr.pendingApprovals !== undefined) fields.push('결재대기');
+        }
+        if (ext.sales) {
+          if (ext.sales.newOrders !== undefined) fields.push('신규수주');
+          if (ext.sales.contracts !== undefined) fields.push('계약');
+        }
+        if (ext.schedule && ext.schedule.length > 0) fields.push('일정 ' + ext.schedule.length + '건');
+      }
+
+      const toast = document.createElement('div');
+      toast.id = 'imwonToast';
+      toast.style.cssText = 'position:fixed;bottom:24px;right:24px;z-index:9999;background:#0B2545;color:#fff;padding:14px 18px;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,0.25);max-width:380px;font-size:14px;line-height:1.5;animation:fadeIn .2s ease;';
+      const head = document.createElement('div');
+      head.style.cssText = 'font-weight:700;margin-bottom:4px;display:flex;align-items:center;gap:6px;';
+      head.textContent = '✓ ' + uploadedCount + '개 파일 업로드 완료';
+      toast.appendChild(head);
+      const body = document.createElement('div');
+      body.style.cssText = 'font-size:12px;color:#CBD5E1;';
+      if (fields.length > 0) {
+        body.textContent = '자동 추출 ' + fields.length + '개 항목 → 대시보드 반영: ' + fields.join(', ');
+      } else {
+        body.innerHTML = '본문에서 인식된 비즈니스 키워드 없음.<br>(텍스트·PDF 본문에 "매출 23.5억", "이직률 8.4%" 같은 한국어 키워드 + 숫자가 명확하면 자동 추출됩니다)';
+      }
+      toast.appendChild(body);
+      document.body.appendChild(toast);
+      setTimeout(() => {
+        if (toast && toast.parentNode) toast.parentNode.removeChild(toast);
+      }, 4500);
     }
 
     function applyExtractedData() {
@@ -2611,6 +2668,8 @@
           const id = (location.hash || '#home').replace('#', '');
           renderTab(id);
         } catch (e) { console.warn('업로드 후 재렌더 실패:', e); }
+        // 추출 결과 토스트 알림
+        try { showExtractionToast(files.length); } catch (e) {}
       }
 
       files.forEach(f => {
