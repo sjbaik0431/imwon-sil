@@ -784,6 +784,16 @@
             <ul id="homeSignalList" class="space-y-2 text-sm"></ul>
           </div>
 
+          <!-- 🤖 보고서 자동 추출 데이터 -->
+          <div class="imw-card border-l-4 border-l-navy-500">
+            <div class="flex items-center justify-between mb-2">
+              <div class="text-xs font-semibold text-navy-900 dark:text-navy-50">🤖 보고서 자동 추출 데이터</div>
+              <span id="homeExtractedSourceCount" class="text-[11px] text-slate-500">0건</span>
+            </div>
+            <ul id="homeExtractedList" class="text-sm space-y-1 leading-relaxed"></ul>
+            <div id="homeExtractedSources" class="text-[11px] text-slate-500 mt-2 leading-relaxed"></div>
+          </div>
+
           <div class="imw-card">
             <div class="flex items-center justify-between mb-2 flex-wrap gap-2">
               <div class="text-xs text-slate-500 dark:text-slate-400">📂 최근 업로드 보고서</div>
@@ -1310,6 +1320,187 @@
       try { _ORIGINAL_DEMO = JSON.parse(JSON.stringify(window.IMWON_DEMO)); } catch (e) { _ORIGINAL_DEMO = null; }
     }
 
+    // ===================== 보고서 본문 파싱 엔진 =====================
+    // 한국어 비즈니스 보고서 본문에서 핵심 숫자를 정규식으로 추출
+    function parseAmount(str) {
+      if (!str) return null;
+      const s = String(str).replace(/[,\s]/g, '');
+      let m;
+      if (m = s.match(/([\d.]+)조/))    return Math.round(parseFloat(m[1]) * 1e12);
+      if (m = s.match(/([\d.]+)억/))    return Math.round(parseFloat(m[1]) * 1e8);
+      if (m = s.match(/([\d.]+)백만/))  return Math.round(parseFloat(m[1]) * 1e6);
+      if (m = s.match(/([\d.]+)만원?/)) return Math.round(parseFloat(m[1]) * 1e4);
+      if (m = s.match(/([\d.]+)천원?/)) return Math.round(parseFloat(m[1]) * 1e3);
+      if (m = s.match(/(\d[\d.]+)원/))  return Math.round(parseFloat(m[1]));
+      const n = parseFloat(s);
+      return isNaN(n) ? null : Math.round(n);
+    }
+
+    function parseReport(content) {
+      const out = {
+        finance: {},     // {revenue, operatingProfit, cashBalance, accountsReceivable, creditLine, operatingMargin, yieldRate}
+        hr:      {},     // {turnoverRate, pendingApprovals, totalEmployees, leaveUsage}
+        sales:   {},     // {newOrders, contracts}
+        schedule: [],    // [{date, title}, ...]
+        meta:    { length: 0 }
+      };
+      if (!content || typeof content !== 'string') return out;
+      const text = content;
+      out.meta.length = text.length;
+
+      const AMT = '([\\d,]+(?:\\.\\d+)?\\s*(?:조|억|백만|만|천)?\\s*원?)';
+      const PCT = '([\\d.]+)\\s*%';
+      const NUM = '([\\d,]+)';
+
+      // 재무
+      let m;
+      m = text.match(new RegExp('(?:당월\\s*매출|매출액|매출)[\\s::\\-]*' + AMT));
+      if (m) out.finance.revenue = parseAmount(m[1]);
+
+      m = text.match(new RegExp('(?:영업이익|영익)[\\s::\\-]*' + AMT));
+      if (m) out.finance.operatingProfit = parseAmount(m[1]);
+
+      m = text.match(new RegExp('(?:현금\\s*잔고|자금\\s*잔고|현금)[\\s::\\-]*' + AMT));
+      if (m) out.finance.cashBalance = parseAmount(m[1]);
+
+      m = text.match(new RegExp('(?:매출\\s*채권)[\\s::\\-]*' + AMT));
+      if (m) out.finance.accountsReceivable = parseAmount(m[1]);
+
+      m = text.match(new RegExp('(?:여신\\s*한도\\s*잔여|여신\\s*한도|여신)[\\s::\\-]*' + AMT));
+      if (m) out.finance.creditLine = parseAmount(m[1]);
+
+      m = text.match(new RegExp('(?:영업\\s*이익률|이익률)[\\s::\\-]*' + PCT));
+      if (m) out.finance.operatingMargin = parseFloat(m[1]);
+
+      m = text.match(new RegExp('(?:수율)[\\s::\\-]*' + PCT));
+      if (m) out.finance.yieldRate = parseFloat(m[1]);
+
+      // 인사
+      m = text.match(new RegExp('이직률[\\s::\\-]*' + PCT));
+      if (m) out.hr.turnoverRate = parseFloat(m[1]);
+
+      m = text.match(new RegExp('연차\\s*소진율[\\s::\\-]*' + PCT));
+      if (m) out.hr.leaveUsage = parseFloat(m[1]);
+
+      m = text.match(new RegExp('(?:결재\\s*대기|미결재)[\\s::\\-]*' + NUM + '\\s*건'));
+      if (m) out.hr.pendingApprovals = parseInt(m[1].replace(/,/g, ''));
+
+      m = text.match(new RegExp('(?:재직자수|총\\s*인원|임직원)[\\s::\\-]*' + NUM + '\\s*명'));
+      if (m) out.hr.totalEmployees = parseInt(m[1].replace(/,/g, ''));
+
+      // 영업
+      m = text.match(new RegExp('신규\\s*수주[\\s::\\-]*' + NUM + '\\s*건'));
+      if (m) out.sales.newOrders = parseInt(m[1].replace(/,/g, ''));
+
+      m = text.match(new RegExp('(?:신규\\s*계약|계약)[\\s::\\-]*' + NUM + '\\s*건'));
+      if (m && !out.sales.newOrders) out.sales.contracts = parseInt(m[1].replace(/,/g, ''));
+
+      // 일정 — 다양한 날짜 형식
+      const datePatterns = [
+        // "5/10 원천세 신고" 또는 "5월 10일 결재"
+        /(\d{1,2})\s*[\/월]\s*(\d{1,2})\s*[일]?\s+([가-힣A-Za-z][^\n,]{2,30})/g,
+        // "2026-05-10 미팅"
+        /(\d{4})-(\d{1,2})-(\d{1,2})\s+([가-힣A-Za-z][^\n,]{2,30})/g
+      ];
+      const today = new Date();
+      const yr = today.getFullYear();
+      datePatterns.forEach((re, idx) => {
+        let mm; const seen = new Set();
+        while ((mm = re.exec(text)) !== null) {
+          let date, title;
+          if (idx === 0) {
+            const month = mm[1].padStart(2, '0');
+            const day   = mm[2].padStart(2, '0');
+            date = yr + '-' + month + '-' + day;
+            title = mm[3].trim();
+          } else {
+            date = mm[1] + '-' + mm[2].padStart(2, '0') + '-' + mm[3].padStart(2, '0');
+            title = mm[4].trim();
+          }
+          const key = date + '|' + title;
+          if (seen.has(key)) continue;
+          seen.add(key);
+          if (out.schedule.length < 12) out.schedule.push({ date: date, title: title });
+        }
+      });
+
+      return out;
+    }
+
+    function aggregateReports() {
+      // 활성 보고서들의 본문을 모두 파싱하여 가장 최근 값으로 합침
+      // (가장 최신 보고서 값이 우선 — reports[0]이 최신, unshift로 추가됨)
+      let reports = [];
+      try { reports = JSON.parse(localStorage.getItem(LS.REPORTS) || '[]'); } catch (e) {}
+      const active = (reports || []).filter(r => r && r.content && (r.status || 'active') === 'active');
+      if (active.length === 0) return null;
+
+      const merged = { finance: {}, hr: {}, sales: {}, schedule: [], sources: [] };
+      // 오래된 것부터 → 최신이 덮어쓰도록
+      active.slice().reverse().forEach(r => {
+        const p = parseReport(r.content);
+        Object.assign(merged.finance, p.finance);
+        Object.assign(merged.hr,      p.hr);
+        Object.assign(merged.sales,   p.sales);
+        if (p.schedule.length > 0) {
+          p.schedule.forEach(s => merged.schedule.push(Object.assign({}, s, { source: r.name })));
+        }
+        const fields = []
+          .concat(Object.keys(p.finance), Object.keys(p.hr), Object.keys(p.sales),
+                  p.schedule.length ? ['일정 ' + p.schedule.length + '건'] : []);
+        if (fields.length > 0) merged.sources.push({ name: r.name, fields: fields });
+      });
+      return merged;
+    }
+
+    function applyExtractedData() {
+      const m = aggregateReports();
+      if (!m) return;
+      const D = window.IMWON_DEMO;
+      if (!D) return;
+
+      // 재무 KPI
+      D.finance = D.finance || { kpis: {}, monthly: [], daily: [] };
+      D.finance.kpis = D.finance.kpis || {};
+      function setKpi(key, label, value, unit) {
+        if (value === undefined || value === null || isNaN(value)) return;
+        const cur = D.finance.kpis[key] || { label: label, unit: unit, status: 'green' };
+        cur.label = cur.label || label;
+        cur.unit  = cur.unit  || unit;
+        cur.current = value;
+        D.finance.kpis[key] = cur;
+      }
+      setKpi('revenue',            '매출',          m.finance.revenue,            '원');
+      setKpi('operatingProfit',    '영업이익',      m.finance.operatingProfit,    '원');
+      setKpi('cashBalance',        '현금잔고',      m.finance.cashBalance,        '원');
+      setKpi('accountsReceivable', '매출채권',      m.finance.accountsReceivable, '원');
+      setKpi('creditLine',         '여신한도잔여',  m.finance.creditLine,         '원');
+
+      // 인사 summary
+      D.hr = D.hr || { summary: {}, compensation: [], flightRisk: [], timeline: [] };
+      D.hr.summary = D.hr.summary || {};
+      if (m.hr.totalEmployees   !== undefined) D.hr.summary.totalEmployees   = m.hr.totalEmployees;
+      if (m.hr.turnoverRate     !== undefined) D.hr.summary.turnoverRate     = m.hr.turnoverRate;
+      if (m.hr.leaveUsage       !== undefined) D.hr.summary.leaveUsage       = m.hr.leaveUsage;
+      if (m.hr.pendingApprovals !== undefined) D.hr.summary.pendingApprovals = m.hr.pendingApprovals;
+
+      // 일정 — 보고서에서 추출된 일정을 schedule.deadlines 에 병합
+      D.schedule = D.schedule || { legal: [], birthdays: [], deadlines: [], meetings: [] };
+      D.schedule.deadlines = D.schedule.deadlines || [];
+      m.schedule.forEach(s => {
+        // 중복 제거
+        const exists = D.schedule.deadlines.some(d => d.date === s.date && d.content === s.title);
+        if (!exists) {
+          D.schedule.deadlines.push({ date: s.date, type: '보고서 추출', content: s.title });
+        }
+      });
+      // 날짜순 정렬
+      D.schedule.deadlines.sort((a, b) => (a.date < b.date ? -1 : 1));
+
+      // 디버그용 — 마지막 추출 결과를 window에 저장 (홈 카드에서 사용)
+      window.__IMWON_EXTRACTED__ = m;
+    }
+
     function applyOverridesToDemo() {
       // 빌더 B(modules.js)는 window.IMWON_DEMO를 직접 참조하므로
       // 오버라이드를 in-place로 적용해야 KPI·인사 메뉴까지 일관 반영됩니다.
@@ -1441,6 +1632,9 @@
 
     function getDemo() {
       applyOverridesToDemo();
+      // 보고서 본문에서 자동 추출된 데이터도 매번 재적용
+      // (renderHome 등이 getDemo()만 호출하면 추출값이 빈 상태로 보일 수 있음을 방지)
+      try { applyExtractedData(); } catch (e) {}
       return (window.IMWON_DEMO && typeof window.IMWON_DEMO === 'object')
         ? Object.assign({}, FALLBACK_DEMO, window.IMWON_DEMO)
         : FALLBACK_DEMO;
@@ -1609,6 +1803,8 @@
       try {
         // 모든 탭 진입 시 사용자 오버라이드 적용 (회사명·대표·임원)
         applyOverridesToDemo();
+        // 업로드한 보고서 본문에서 자동 추출된 데이터 적용
+        try { applyExtractedData(); } catch (e) { console.warn('보고서 자동 추출 적용 실패:', e); }
         switch (id) {
           case 'home':     renderHome();    break;
           case 'reports':  renderReports(); break;
@@ -1865,6 +2061,56 @@
           el('div', { class: 'text-[10px] ' + (c.delta && c.delta.indexOf('▲') === 0 ? 'text-signal-red' : (c.delta && c.delta.indexOf('▼') === 0 ? 'text-blue-600' : 'text-slate-500')) }, c.delta || '')
         ]));
       });
+
+      // 🤖 보고서 자동 추출 데이터 카드
+      const extBox = $('#homeExtractedList');
+      const extSrcCount = $('#homeExtractedSourceCount');
+      const extSrcs = $('#homeExtractedSources');
+      if (extBox) {
+        clearChildren(extBox);
+        if (extSrcs) clearChildren(extSrcs);
+        const extracted = window.__IMWON_EXTRACTED__;
+        if (!extracted || (!extracted.sources || extracted.sources.length === 0)) {
+          extBox.appendChild(el('li', { class: 'text-slate-400 text-xs' },
+            '업로드한 보고서에서 자동 추출된 데이터가 없습니다. 텍스트·PDF 파일을 업로드하시면 매출·현금·이직률 등 핵심 숫자를 자동 분석합니다.'));
+          if (extSrcCount) extSrcCount.textContent = '0건';
+        } else {
+          if (extSrcCount) extSrcCount.textContent = extracted.sources.length + '개 파일에서 추출';
+          // 재무
+          const f = extracted.finance || {};
+          if (f.revenue !== undefined)            extBox.appendChild(el('li', null, '💰 매출 ' + fmtMoney(f.revenue)));
+          if (f.operatingProfit !== undefined)    extBox.appendChild(el('li', null, '📈 영업이익 ' + fmtMoney(f.operatingProfit)));
+          if (f.cashBalance !== undefined)        extBox.appendChild(el('li', null, '💵 현금잔고 ' + fmtMoney(f.cashBalance)));
+          if (f.accountsReceivable !== undefined) extBox.appendChild(el('li', null, '🧾 매출채권 ' + fmtMoney(f.accountsReceivable)));
+          if (f.creditLine !== undefined)         extBox.appendChild(el('li', null, '🏦 여신한도잔여 ' + fmtMoney(f.creditLine)));
+          if (f.operatingMargin !== undefined)    extBox.appendChild(el('li', null, '📊 영업이익률 ' + f.operatingMargin + '%'));
+          if (f.yieldRate !== undefined)          extBox.appendChild(el('li', null, '🏭 수율 ' + f.yieldRate + '%'));
+          // 인사
+          const h = extracted.hr || {};
+          if (h.totalEmployees   !== undefined) extBox.appendChild(el('li', null, '👥 재직자수 ' + h.totalEmployees + '명'));
+          if (h.turnoverRate     !== undefined) extBox.appendChild(el('li', null, '🚪 이직률 ' + h.turnoverRate + '%'));
+          if (h.leaveUsage       !== undefined) extBox.appendChild(el('li', null, '🏖 연차소진율 ' + h.leaveUsage + '%'));
+          if (h.pendingApprovals !== undefined) extBox.appendChild(el('li', null, '✍ 결재 대기 ' + h.pendingApprovals + '건'));
+          // 영업
+          const s = extracted.sales || {};
+          if (s.newOrders !== undefined) extBox.appendChild(el('li', null, '📝 신규 수주 ' + s.newOrders + '건'));
+          if (s.contracts !== undefined) extBox.appendChild(el('li', null, '📑 신규 계약 ' + s.contracts + '건'));
+          // 일정
+          if (extracted.schedule && extracted.schedule.length > 0) {
+            extBox.appendChild(el('li', null, '📅 일정 ' + extracted.schedule.length + '건 (자동 추출)'));
+          }
+          if (extBox.children.length === 0) {
+            extBox.appendChild(el('li', { class: 'text-slate-400 text-xs' },
+              '인식된 항목 없음. 본문에 "매출 23.5억", "이직률 8.4%", "결재 대기 14건" 같은 한국어 비즈니스 키워드가 포함되면 자동 추출됩니다.'));
+          }
+          // 출처 목록
+          if (extSrcs) {
+            extracted.sources.forEach(src => {
+              extSrcs.appendChild(el('div', null, '· ' + src.name + ' → ' + (src.fields.join(', ') || '항목 없음')));
+            });
+          }
+        }
+      }
 
       // 최근 업로드 보고서 (활성 상태, 최신 5건)
       const recentBox = $('#homeRecentReports');
@@ -2360,10 +2606,11 @@
         saveReports(arr.slice(0, 200));
         _reportFilter = 'active';
         renderReportFileList();
-        // 홈 화면에도 즉시 반영
-        if ((location.hash || '#home').replace('#', '') === 'home') {
-          try { renderHome(); } catch (e) {}
-        }
+        // 보고서 본문 자동 추출 + 활성 탭 전체 재렌더 (대시보드 즉시 반영)
+        try {
+          const id = (location.hash || '#home').replace('#', '');
+          renderTab(id);
+        } catch (e) { console.warn('업로드 후 재렌더 실패:', e); }
       }
 
       files.forEach(f => {
