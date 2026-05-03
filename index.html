@@ -1,0 +1,2121 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>임원실 Imwon.Sil — 경영 종합 대시보드</title>
+  <meta name="description" content="한국 중소기업 CEO·임원용 경영 종합 대시보드" />
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            navy: {
+              900: '#0B2545',
+              800: '#1F3A5F',
+              500: '#6B8DB5',
+              50:  '#EEF2F8'
+            },
+            signal: {
+              red:    '#DC2626',
+              yellow: '#F59E0B',
+              green:  '#16A34A'
+            }
+          },
+          fontFamily: {
+            pretendard: ['system-ui', 'Pretendard Variable', 'Pretendard', '-apple-system', 'sans-serif']
+          }
+        }
+      }
+    };
+  </script>
+
+  <!-- Chart.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <style>
+    html, body { font-family: system-ui, "Pretendard Variable", Pretendard, -apple-system, sans-serif; }
+    body { background-color: #F7F9FC; color: #0B2545; }
+    html.dark body { background-color: #0A1628; color: #E5E7EB; }
+
+    /* 탭 패널: 기본 숨김 */
+    .tab-pane { display: none; }
+    .tab-pane.active { display: block; }
+
+    /* 탭 버튼 활성 스타일 */
+    .tab-btn {
+      padding: 0.5rem 0.85rem;
+      border-bottom: 2px solid transparent;
+      color: #475569;
+      font-size: 0.875rem;
+      font-weight: 500;
+      white-space: nowrap;
+      transition: all .15s ease;
+    }
+    .tab-btn:hover { color: #0B2545; }
+    html.dark .tab-btn { color: #94A3B8; }
+    html.dark .tab-btn:hover { color: #E5E7EB; }
+    .tab-btn.active {
+      color: #0B2545;
+      border-bottom-color: #0B2545;
+      font-weight: 600;
+    }
+    html.dark .tab-btn.active {
+      color: #6B8DB5;
+      border-bottom-color: #6B8DB5;
+    }
+
+    /* 카드 공통 */
+    .imw-card {
+      background: #FFFFFF;
+      border: 1px solid #E2E8F0;
+      border-radius: 12px;
+      padding: 1.25rem;
+    }
+    html.dark .imw-card {
+      background: #11233F;
+      border-color: #1F3A5F;
+    }
+
+    /* 신호등 점 */
+    .dot { display: inline-block; width: 10px; height: 10px; border-radius: 9999px; }
+
+    /* 스크롤바 미니멀 */
+    ::-webkit-scrollbar { width: 8px; height: 8px; }
+    ::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 4px; }
+    html.dark ::-webkit-scrollbar-thumb { background: #1F3A5F; }
+
+    /* 모달 백드롭 */
+    .modal-backdrop {
+      position: fixed; inset: 0;
+      background: rgba(11, 37, 69, 0.55);
+      display: none;
+      align-items: center; justify-content: center;
+      z-index: 80;
+    }
+    .modal-backdrop.active { display: flex; }
+
+    /* 인쇄용 */
+    @media print { header, footer, #tabBar { display: none; } }
+
+    /* ============================================================
+       빌더 B 모듈 (메뉴 7~12) — imwon-* 공용 스타일
+       ============================================================ */
+
+    /* 섹션 헤더 */
+    .imwon-section-header { margin: 0 0 1rem 0; }
+    .imwon-section-title  { font-size: 1.5rem; font-weight: 700; color: #0B2545; margin: 0 0 0.25rem 0; }
+    .imwon-section-sub    { font-size: 0.875rem; color: #64748B; margin: 0; }
+    html.dark .imwon-section-title { color: #EEF2F8; }
+    html.dark .imwon-section-sub   { color: #94A3B8; }
+
+    /* 카드 공통 */
+    .imwon-card {
+      background: #FFFFFF;
+      border: 1px solid #E2E8F0;
+      border-radius: 12px;
+      padding: 1.25rem;
+      margin-bottom: 1rem;
+    }
+    html.dark .imwon-card { background: #11233F; border-color: #1F3A5F; color: #E5E7EB; }
+
+    /* 그리드 */
+    .imwon-grid-2 { display: grid; grid-template-columns: 1fr 380px; gap: 1.25rem; }
+    .imwon-grid-2x2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem; }
+    @media (max-width: 900px) {
+      .imwon-grid-2, .imwon-grid-2x2 { grid-template-columns: 1fr; }
+    }
+
+    /* 탭바 */
+    .imwon-tabbar { display: flex; gap: 0.25rem; border-bottom: 1px solid #E2E8F0; margin-bottom: 1rem; flex-wrap: wrap; }
+    html.dark .imwon-tabbar { border-bottom-color: #1F3A5F; }
+    .imwon-tab-btn {
+      background: transparent; border: none; padding: 0.6rem 1rem;
+      font-size: 0.875rem; color: #64748B; cursor: pointer;
+      border-bottom: 2px solid transparent; transition: all .15s ease;
+    }
+    .imwon-tab-btn:hover { color: #0B2545; }
+    html.dark .imwon-tab-btn:hover { color: #EEF2F8; }
+    .imwon-tab-btn.active { color: #0B2545; border-bottom-color: #0B2545; font-weight: 600; }
+    html.dark .imwon-tab-btn.active { color: #6B8DB5; border-bottom-color: #6B8DB5; }
+    .imwon-tab-panel { display: none; }
+    .imwon-tab-panel.active { display: block; }
+
+    /* 툴바 */
+    .imwon-toolbar { display: flex; gap: 0.5rem; margin-bottom: 1rem; flex-wrap: wrap; align-items: center; }
+    .imwon-toolbar-note { font-size: 0.75rem; color: #64748B; }
+    .imwon-search {
+      flex: 1; min-width: 200px; padding: 0.5rem 0.75rem;
+      border: 1px solid #CBD5E1; border-radius: 6px; font-size: 0.875rem;
+      background: #FFFFFF; color: #0B2545;
+    }
+    .imwon-num { width: 130px; padding: 0.5rem 0.75rem; border: 1px solid #CBD5E1; border-radius: 6px; font-size: 0.875rem; }
+    html.dark .imwon-search, html.dark .imwon-num { background: #0F1B2D; border-color: #1F3A5F; color: #E5E7EB; }
+
+    /* 칩 (필터) */
+    .imwon-chip-row { display: flex; gap: 0.25rem; flex-wrap: wrap; }
+    .imwon-chip {
+      padding: 0.35rem 0.75rem; border-radius: 9999px; border: 1px solid #CBD5E1;
+      background: #FFFFFF; font-size: 0.75rem; color: #475569; cursor: pointer; transition: all .12s ease;
+    }
+    .imwon-chip:hover { border-color: #0B2545; color: #0B2545; }
+    .imwon-chip.active { background: #0B2545; color: #FFFFFF; border-color: #0B2545; }
+    html.dark .imwon-chip { background: #0F1B2D; border-color: #1F3A5F; color: #94A3B8; }
+    html.dark .imwon-chip.active { background: #6B8DB5; color: #0B2545; border-color: #6B8DB5; }
+
+    /* 버튼 */
+    .imwon-btn { padding: 0.45rem 0.9rem; border-radius: 6px; border: 1px solid #CBD5E1; background: #FFFFFF; font-size: 0.8125rem; cursor: pointer; }
+    .imwon-btn:hover { background: #F1F5F9; }
+    .imwon-btn-primary { padding: 0.45rem 0.9rem; border-radius: 6px; border: none; background: #0B2545; color: #FFFFFF; font-size: 0.8125rem; cursor: pointer; font-weight: 500; }
+    .imwon-btn-primary:hover { background: #1F3A5F; }
+    html.dark .imwon-btn { background: #0F1B2D; border-color: #1F3A5F; color: #E5E7EB; }
+    html.dark .imwon-btn:hover { background: #1F3A5F; }
+
+    /* 칼럼 레이아웃 */
+    .imwon-col-main, .imwon-col-side { min-width: 0; }
+    .imwon-col-title { font-size: 0.95rem; font-weight: 700; color: #0B2545; margin: 0 0 0.75rem 0; }
+    html.dark .imwon-col-title { color: #EEF2F8; }
+
+    /* 요약 카드 */
+    .imwon-summary-card { display: flex; flex-direction: column; align-items: center; padding: 1.25rem; }
+    .imwon-summary-num { font-size: 2.25rem; font-weight: 700; color: #0B2545; line-height: 1; }
+    html.dark .imwon-summary-num { color: #6B8DB5; }
+    .imwon-summary-label { font-size: 0.8125rem; color: #64748B; margin-top: 0.25rem; }
+
+    /* 리스트 */
+    .imwon-list { display: flex; flex-direction: column; gap: 0.5rem; }
+    .imwon-list-item {
+      display: grid; grid-template-columns: 90px 1fr; gap: 0.875rem;
+      padding: 0.75rem 1rem; background: #FFFFFF; border: 1px solid #E2E8F0; border-left-width: 4px; border-radius: 8px;
+    }
+    html.dark .imwon-list-item { background: #11233F; border-color: #1F3A5F; }
+    .imwon-list-item.dday-red    { border-left-color: #DC2626; }
+    .imwon-list-item.dday-yellow { border-left-color: #F59E0B; }
+    .imwon-list-item.dday-gray   { border-left-color: #94A3B8; }
+    .imwon-list-date-text { font-size: 0.75rem; color: #64748B; }
+    .imwon-list-dday { font-size: 0.95rem; font-weight: 700; color: #0B2545; }
+    .imwon-list-item.dday-red .imwon-list-dday    { color: #DC2626; }
+    .imwon-list-item.dday-yellow .imwon-list-dday { color: #B45309; }
+    .imwon-list-title { font-weight: 600; font-size: 0.9rem; color: #0B2545; }
+    html.dark .imwon-list-title { color: #EEF2F8; }
+    .imwon-list-sub { font-size: 0.75rem; color: #64748B; margin-top: 0.125rem; }
+
+    /* 미니 캘린더 */
+    .imwon-mini-cal { padding: 1rem; }
+    .imwon-mini-cal-title { font-size: 0.95rem; font-weight: 700; margin: 0 0 0.75rem 0; color: #0B2545; }
+    html.dark .imwon-mini-cal-title { color: #EEF2F8; }
+    .imwon-cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
+    .imwon-cal-h { font-size: 0.6875rem; color: #94A3B8; text-align: center; padding: 0.25rem 0; font-weight: 500; }
+    .imwon-cal-c { aspect-ratio: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 0.75rem; color: #475569; border-radius: 4px; position: relative; }
+    .imwon-cal-c.blank { visibility: hidden; }
+    .imwon-cal-c.today { background: #0B2545; color: #FFFFFF; font-weight: 700; }
+    .imwon-cal-num { line-height: 1; }
+    .imwon-cal-dot { width: 4px; height: 4px; background: #DC2626; border-radius: 50%; margin-top: 2px; }
+    html.dark .imwon-cal-c { color: #94A3B8; }
+    html.dark .imwon-cal-c.today { background: #6B8DB5; color: #0B2545; }
+
+    /* KPI 카드 */
+    .imwon-kpi-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 0.875rem; margin-bottom: 1rem; }
+    .imwon-kpi-card {
+      position: relative; background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 10px;
+      padding: 0.875rem 1rem; border-top-width: 3px;
+    }
+    html.dark .imwon-kpi-card { background: #11233F; border-color: #1F3A5F; }
+    .imwon-kpi-card.status-green  { border-top-color: #16A34A; }
+    .imwon-kpi-card.status-yellow { border-top-color: #F59E0B; }
+    .imwon-kpi-card.status-red    { border-top-color: #DC2626; }
+    .imwon-kpi-card.status-gray   { border-top-color: #94A3B8; }
+    .imwon-kpi-dot { position: absolute; top: 0.875rem; right: 0.875rem; width: 8px; height: 8px; border-radius: 9999px; }
+    .imwon-kpi-dot.status-green  { background: #16A34A; }
+    .imwon-kpi-dot.status-yellow { background: #F59E0B; }
+    .imwon-kpi-dot.status-red    { background: #DC2626; }
+    .imwon-kpi-dot.status-gray   { background: #94A3B8; }
+    .imwon-kpi-name { font-size: 0.8125rem; color: #64748B; margin-bottom: 0.5rem; }
+    .imwon-kpi-val  { display: flex; align-items: baseline; gap: 0.375rem; flex-wrap: wrap; margin-bottom: 0.5rem; }
+    .imwon-kpi-current { font-size: 1.25rem; font-weight: 700; color: #0B2545; }
+    html.dark .imwon-kpi-current { color: #EEF2F8; }
+    .imwon-kpi-target  { font-size: 0.75rem; color: #64748B; }
+    .imwon-kpi-bar { height: 6px; background: #F1F5F9; border-radius: 9999px; overflow: hidden; margin-bottom: 0.375rem; }
+    html.dark .imwon-kpi-bar { background: #1F3A5F; }
+    .imwon-kpi-bar-fill { height: 100%; transition: width .3s ease; }
+    .imwon-kpi-bar-fill.status-green  { background: #16A34A; }
+    .imwon-kpi-bar-fill.status-yellow { background: #F59E0B; }
+    .imwon-kpi-bar-fill.status-red    { background: #DC2626; }
+    .imwon-kpi-bar-fill.status-gray   { background: #94A3B8; }
+    .imwon-kpi-pct { font-size: 0.6875rem; color: #94A3B8; }
+    .imwon-kpi-dept-title { font-size: 0.95rem; font-weight: 700; color: #0B2545; margin: 1.25rem 0 0.625rem 0; }
+    html.dark .imwon-kpi-dept-title { color: #EEF2F8; }
+    .imwon-kpi-individual { margin-bottom: 1rem; }
+
+    /* 모달 (모듈 내장) */
+    .imwon-modal-overlay {
+      position: fixed; inset: 0; background: rgba(11, 37, 69, 0.55);
+      display: flex; align-items: center; justify-content: center; z-index: 90;
+    }
+    .imwon-modal { background: #FFFFFF; border-radius: 12px; padding: 1.5rem; max-width: 420px; width: 90%; }
+    html.dark .imwon-modal { background: #11233F; color: #E5E7EB; }
+    .imwon-modal h3 { margin: 0 0 1rem 0; font-size: 1.125rem; font-weight: 700; color: #0B2545; }
+    html.dark .imwon-modal h3 { color: #EEF2F8; }
+    .imwon-form-row { display: flex; flex-direction: column; gap: 0.25rem; margin-bottom: 0.75rem; }
+    .imwon-form-row label { font-size: 0.8125rem; font-weight: 600; color: #475569; }
+    html.dark .imwon-form-row label { color: #94A3B8; }
+    .imwon-form-row input { padding: 0.5rem 0.75rem; border: 1px solid #CBD5E1; border-radius: 6px; font-size: 0.875rem; }
+    html.dark .imwon-form-row input { background: #0F1B2D; border-color: #1F3A5F; color: #E5E7EB; }
+    .imwon-form-actions { display: flex; gap: 0.5rem; justify-content: flex-end; margin-top: 1rem; }
+
+    /* 시장 */
+    .imwon-market-section { padding: 1rem; }
+    .imwon-market-title { font-size: 0.95rem; font-weight: 700; color: #0B2545; margin: 0 0 0.625rem 0; }
+    html.dark .imwon-market-title { color: #EEF2F8; }
+    .imwon-market-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 0.625rem; }
+    .imwon-market-cell { padding: 0.625rem; background: #F7F9FC; border-radius: 6px; }
+    html.dark .imwon-market-cell { background: #0F1B2D; }
+    .imwon-market-name { font-size: 0.75rem; color: #64748B; margin-bottom: 0.25rem; }
+    .imwon-market-value { font-size: 1.125rem; font-weight: 700; color: #0B2545; }
+    html.dark .imwon-market-value { color: #EEF2F8; }
+    .imwon-market-note { font-size: 0.6875rem; color: #94A3B8; margin-top: 0.25rem; }
+    .imwon-change { display: inline-block; font-size: 0.75rem; font-weight: 500; margin-top: 0.25rem; }
+    .imwon-change.up { color: #DC2626; }
+    .imwon-change.down { color: #2563EB; }
+
+    /* 푸터 출처 */
+    .imwon-footer-note { font-size: 0.6875rem; color: #94A3B8; margin-top: 1rem; padding-top: 0.625rem; border-top: 1px solid #E2E8F0; }
+    html.dark .imwon-footer-note { border-top-color: #1F3A5F; }
+
+    /* 뉴스 카드 */
+    .imwon-news-list { display: flex; flex-direction: column; gap: 0.625rem; }
+    .imwon-news-card { padding: 0.875rem 1rem; background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 8px; }
+    html.dark .imwon-news-card { background: #11233F; border-color: #1F3A5F; }
+    .imwon-news-meta { display: flex; gap: 0.5rem; font-size: 0.6875rem; color: #94A3B8; margin-bottom: 0.375rem; flex-wrap: wrap; align-items: center; }
+    .imwon-news-source { font-weight: 600; color: #0B2545; }
+    html.dark .imwon-news-source { color: #6B8DB5; }
+    .imwon-news-cat { padding: 0.125rem 0.5rem; background: #EEF2F8; border-radius: 9999px; color: #1F3A5F; }
+    html.dark .imwon-news-cat { background: #1F3A5F; color: #EEF2F8; }
+    .imwon-news-title { display: block; font-size: 0.9rem; font-weight: 600; color: #0B2545; text-decoration: none; line-height: 1.4; margin-bottom: 0.375rem; }
+    .imwon-news-title:hover { color: #1F3A5F; text-decoration: underline; }
+    html.dark .imwon-news-title { color: #EEF2F8; }
+    .imwon-news-summary { font-size: 0.8125rem; color: #64748B; line-height: 1.5; margin: 0; }
+
+    /* 입찰 */
+    .imwon-tender-list { display: flex; flex-direction: column; gap: 0.625rem; }
+    .imwon-tender-card {
+      display: grid; grid-template-columns: 36px 1fr 80px; gap: 0.875rem;
+      padding: 0.875rem 1rem; background: #FFFFFF; border: 1px solid #E2E8F0; border-left-width: 4px; border-radius: 8px;
+      align-items: center;
+    }
+    html.dark .imwon-tender-card { background: #11233F; border-color: #1F3A5F; }
+    .imwon-tender-card.dday-red    { border-left-color: #DC2626; }
+    .imwon-tender-card.dday-yellow { border-left-color: #F59E0B; }
+    .imwon-tender-card.dday-gray   { border-left-color: #94A3B8; }
+    .imwon-star { background: transparent; border: none; font-size: 1.25rem; cursor: pointer; color: #CBD5E1; line-height: 1; }
+    .imwon-star.on { color: #F59E0B; }
+    .imwon-tender-agency { font-size: 0.75rem; color: #64748B; margin-bottom: 0.125rem; }
+    .imwon-tender-title { font-weight: 600; font-size: 0.9rem; color: #0B2545; margin-bottom: 0.375rem; }
+    html.dark .imwon-tender-title { color: #EEF2F8; }
+    .imwon-tender-meta { display: flex; gap: 0.75rem; font-size: 0.75rem; color: #64748B; flex-wrap: wrap; }
+    .imwon-tender-amount { font-weight: 600; color: #0B2545; }
+    html.dark .imwon-tender-amount { color: #6B8DB5; }
+    .imwon-tender-dday { font-size: 1rem; font-weight: 700; text-align: center; }
+    .imwon-tender-dday.dday-red    { color: #DC2626; }
+    .imwon-tender-dday.dday-yellow { color: #B45309; }
+    .imwon-tender-dday.dday-gray   { color: #94A3B8; }
+
+    /* 명함 */
+    .imwon-card-list-col { max-height: 70vh; overflow-y: auto; padding-right: 0.25rem; }
+    .imwon-card-item {
+      padding: 0.75rem; background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 8px;
+      cursor: pointer; margin-bottom: 0.5rem; transition: all .12s ease;
+    }
+    html.dark .imwon-card-item { background: #11233F; border-color: #1F3A5F; }
+    .imwon-card-item:hover { border-color: #0B2545; }
+    .imwon-card-item.active { border-color: #0B2545; background: #EEF2F8; }
+    html.dark .imwon-card-item.active { background: #1F3A5F; }
+    .imwon-card-name { font-weight: 600; font-size: 0.9rem; color: #0B2545; }
+    html.dark .imwon-card-name { color: #EEF2F8; }
+    .imwon-card-company { font-size: 0.75rem; color: #64748B; margin-bottom: 0.375rem; }
+    .imwon-card-relation-bar { height: 6px; background: #F1F5F9; border-radius: 9999px; overflow: hidden; margin-bottom: 0.25rem; }
+    html.dark .imwon-card-relation-bar { background: #1F3A5F; }
+    .imwon-card-relation-bar.large { height: 10px; margin-top: 0.625rem; }
+    .imwon-card-relation-fill { height: 100%; background: linear-gradient(90deg, #6B8DB5, #0B2545); }
+    .imwon-card-relation-pct { font-size: 0.6875rem; color: #94A3B8; }
+    .imwon-card-stale { font-size: 0.6875rem; color: #DC2626; margin-top: 0.25rem; font-weight: 500; }
+    .imwon-card-detail { padding: 1.25rem; }
+    .imwon-card-detail-name { font-size: 1.125rem; font-weight: 700; color: #0B2545; margin: 0 0 0.5rem 0; }
+    html.dark .imwon-card-detail-name { color: #EEF2F8; }
+    .imwon-card-detail-row { font-size: 0.8125rem; color: #475569; margin-bottom: 0.25rem; }
+    html.dark .imwon-card-detail-row { color: #CBD5E1; }
+    .imwon-card-detail-row.stale { color: #DC2626; }
+    .imwon-tag-row { display: flex; flex-wrap: wrap; gap: 0.25rem; margin-top: 0.625rem; }
+    .imwon-tag { font-size: 0.6875rem; padding: 0.125rem 0.5rem; background: #EEF2F8; color: #1F3A5F; border-radius: 9999px; }
+    html.dark .imwon-tag { background: #1F3A5F; color: #EEF2F8; }
+    .imwon-card-events { padding: 1rem; margin-top: 1rem; }
+    .imwon-card-events h4 { margin: 0 0 0.625rem 0; font-size: 0.875rem; font-weight: 700; color: #0B2545; }
+    html.dark .imwon-card-events h4 { color: #EEF2F8; }
+    .imwon-event-list { display: flex; flex-direction: column; gap: 0.375rem; }
+    .imwon-event-row {
+      display: grid; grid-template-columns: 50px 80px 1fr 90px; gap: 0.5rem;
+      padding: 0.5rem 0.625rem; border-radius: 6px; font-size: 0.75rem; align-items: center;
+      background: #F7F9FC;
+    }
+    html.dark .imwon-event-row { background: #0F1B2D; }
+    .imwon-event-row.dday-red    { border-left: 3px solid #DC2626; }
+    .imwon-event-row.dday-yellow { border-left: 3px solid #F59E0B; }
+    .imwon-event-row.dday-gray   { border-left: 3px solid #94A3B8; }
+    .imwon-event-dday { font-weight: 700; color: #0B2545; }
+    html.dark .imwon-event-dday { color: #6B8DB5; }
+    .imwon-event-row.dday-red .imwon-event-dday    { color: #DC2626; }
+    .imwon-event-row.dday-yellow .imwon-event-dday { color: #B45309; }
+    .imwon-event-date { color: #64748B; }
+    .imwon-event-name { color: #0B2545; font-weight: 500; }
+    html.dark .imwon-event-name { color: #EEF2F8; }
+    .imwon-event-type { color: #64748B; text-align: right; }
+
+    /* 메모 */
+    .imwon-memo-title { font-size: 0.875rem; font-weight: 700; color: #0B2545; margin: 1rem 0 0.5rem 0; }
+    html.dark .imwon-memo-title { color: #EEF2F8; }
+    .imwon-memo-list { display: flex; flex-direction: column; gap: 0.375rem; margin-bottom: 0.625rem; }
+    .imwon-memo-item { padding: 0.5rem 0.75rem; background: #F7F9FC; border-radius: 6px; font-size: 0.8125rem; }
+    html.dark .imwon-memo-item { background: #0F1B2D; }
+    .imwon-memo-date { font-size: 0.6875rem; color: #94A3B8; margin-bottom: 0.125rem; }
+    .imwon-memo-text { color: #0B2545; }
+    html.dark .imwon-memo-text { color: #E5E7EB; }
+
+    /* 진행바 (OCR) */
+    .imwon-progress-wrap { padding: 0.75rem; background: #F7F9FC; border-radius: 8px; margin-bottom: 1rem; }
+    html.dark .imwon-progress-wrap { background: #0F1B2D; }
+    .imwon-progress-text { font-size: 0.8125rem; color: #475569; margin-bottom: 0.375rem; }
+    html.dark .imwon-progress-text { color: #CBD5E1; }
+    .imwon-progress-bar { height: 6px; background: #E2E8F0; border-radius: 9999px; overflow: hidden; }
+    html.dark .imwon-progress-bar { background: #1F3A5F; }
+    .imwon-progress-fill { height: 100%; background: linear-gradient(90deg, #1F3A5F, #6B8DB5); transition: width .25s ease; }
+
+    /* 상태 메시지 */
+    .imwon-empty { padding: 1.5rem; text-align: center; color: #94A3B8; font-size: 0.875rem; }
+    .imwon-error { padding: 0.75rem 1rem; background: #FEE2E2; border-radius: 8px; color: #991B1B; font-size: 0.8125rem; }
+    html.dark .imwon-error { background: rgba(220, 38, 38, 0.15); color: #FCA5A5; }
+  </style>
+</head>
+<body class="font-pretendard antialiased">
+
+  <!-- ============== 환영 모달 (Open 데모 안내) ============== -->
+  <div id="welcomeModal" class="modal-backdrop">
+    <div class="imw-card w-full max-w-lg mx-4">
+      <h2 class="text-xl font-bold text-navy-900 dark:text-navy-50 mb-2">임원실에 오신 것을 환영합니다</h2>
+      <p class="text-sm text-slate-600 dark:text-slate-300 mb-3 leading-relaxed">
+        한국 중소기업 CEO·임원을 위한 경영 종합 대시보드 — 가상 회사 <b>"한울정공(주)"</b>의 12개월치 데모 데이터로 12개 메뉴 전부를 자유롭게 둘러보실 수 있습니다.
+      </p>
+      <div class="bg-navy-50 dark:bg-navy-900/40 border border-navy-500/20 rounded-md p-3 text-xs text-slate-700 dark:text-slate-300 leading-relaxed mb-3">
+        <div class="font-semibold text-navy-900 dark:text-navy-50 mb-1">Open 데모 — 라이센스 키 불필요</div>
+        본 페이지는 누구나 어디서나 자유롭게 접근하실 수 있는 공개 데모입니다. 입력하시는 메모·KPI·명함은 본인의 브라우저에만 저장되며 외부로 전송되지 않습니다. <b>실서비스 도입·계약 문의</b>는 <a href="mailto:bsj0431@gmail.com" class="underline">bsj0431@gmail.com</a> 또는 다풀림행정사 사무소로 연락 주십시오.
+      </div>
+      <div class="grid grid-cols-3 gap-2 text-[11px] text-slate-600 dark:text-slate-300 mb-4">
+        <div class="border border-slate-200 dark:border-navy-800 rounded-md p-2 text-center">
+          <div class="text-base mb-0.5">🎤</div>
+          <div>음성 입력·출력은 <b>Chrome/Edge</b> 권장</div>
+        </div>
+        <div class="border border-slate-200 dark:border-navy-800 rounded-md p-2 text-center">
+          <div class="text-base mb-0.5">📊</div>
+          <div>모든 데이터는 <b>예시</b>입니다</div>
+        </div>
+        <div class="border border-slate-200 dark:border-navy-800 rounded-md p-2 text-center">
+          <div class="text-base mb-0.5">🔒</div>
+          <div>입력 내용은 <b>로컬 저장</b>만</div>
+        </div>
+      </div>
+      <div class="flex justify-end">
+        <button id="enterDemoBtn" class="px-5 py-2 text-sm rounded-md bg-navy-900 text-white hover:bg-navy-800 font-semibold">
+          지금 시작 →
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============== 설정 모달 ============== -->
+  <div id="settingsModal" class="modal-backdrop">
+    <div class="imw-card w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto">
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="text-lg font-bold text-navy-900 dark:text-navy-50">설정</h2>
+        <button id="closeSettingsBtn" class="text-slate-400 hover:text-slate-600 text-xl leading-none">&times;</button>
+      </div>
+
+      <div class="space-y-5">
+        <div>
+          <label class="block text-sm font-semibold mb-1">AI 제공자 (BYOK)</label>
+          <select id="aiProviderSelect"
+                  class="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-900 text-sm">
+            <option value="openai">OpenAI</option>
+            <option value="claude">Claude (Anthropic)</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="block text-sm font-semibold mb-1">API 키</label>
+          <input id="apiKeyInput" type="password"
+                 class="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-900 text-sm"
+                 placeholder="sk-..." />
+          <p class="text-[11px] text-slate-500 mt-1">키는 본 브라우저에만 저장되며 외부로 전송되지 않습니다.</p>
+        </div>
+
+        <div>
+          <label class="block text-sm font-semibold mb-1">대표 호칭</label>
+          <input id="ceoNameInput" type="text"
+                 class="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-900 text-sm"
+                 placeholder="홍길동" />
+        </div>
+
+        <div class="flex items-center justify-between">
+          <span class="text-sm font-semibold">브라우저 알림</span>
+          <button id="reqNotifBtn"
+                  class="px-3 py-1.5 text-xs rounded-md border border-slate-300 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-800">
+            권한 요청
+          </button>
+        </div>
+
+        <div class="flex items-center justify-between">
+          <span class="text-sm font-semibold">데모 데이터</span>
+          <button id="resetDemoBtn"
+                  class="px-3 py-1.5 text-xs rounded-md border border-signal-red text-signal-red hover:bg-red-50 dark:hover:bg-red-900/20">
+            리셋
+          </button>
+        </div>
+
+        <div class="flex items-center justify-between">
+          <span class="text-sm font-semibold">라이센스 키</span>
+          <button id="clearLicenseBtn"
+                  class="px-3 py-1.5 text-xs rounded-md border border-slate-300 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-800">
+            제거
+          </button>
+        </div>
+      </div>
+
+      <div class="flex justify-end gap-2 mt-6">
+        <button id="saveSettingsBtn" class="px-4 py-2 text-sm rounded-md bg-navy-900 text-white hover:bg-navy-800">
+          저장
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============== 헤더 ============== -->
+  <header class="sticky top-0 z-40 bg-white/90 dark:bg-navy-900/90 backdrop-blur border-b border-slate-200 dark:border-navy-800">
+    <div class="max-w-screen-2xl mx-auto px-4 py-3 flex items-center justify-between gap-4">
+      <!-- 로고 -->
+      <a href="#home" class="flex items-center gap-2 shrink-0">
+        <div class="w-8 h-8 rounded-md bg-navy-900 dark:bg-navy-500 text-white flex items-center justify-center font-bold text-sm">壬</div>
+        <div class="leading-tight">
+          <div class="font-bold text-navy-900 dark:text-navy-50 text-sm">임원실</div>
+          <div class="text-[10px] text-slate-500 tracking-widest">Imwon.Sil</div>
+        </div>
+      </a>
+
+      <!-- 가로 탭 (데스크탑) -->
+      <nav id="tabBar" class="hidden lg:flex flex-1 items-center justify-center gap-1 overflow-x-auto"></nav>
+
+      <!-- 우측 도구 -->
+      <div class="flex items-center gap-1 shrink-0">
+        <button id="micBtn" title="음성 입력 (STT)"
+                class="w-9 h-9 flex items-center justify-center rounded-md hover:bg-slate-100 dark:hover:bg-navy-800 text-lg">🎤</button>
+        <button id="ttsBtn" title="브리핑 음성 출력 (TTS)"
+                class="w-9 h-9 flex items-center justify-center rounded-md hover:bg-slate-100 dark:hover:bg-navy-800 text-lg">🔊</button>
+        <button id="themeBtn" title="라이트/다크 전환"
+                class="w-9 h-9 flex items-center justify-center rounded-md hover:bg-slate-100 dark:hover:bg-navy-800 text-lg">🌙</button>
+        <button id="settingsBtn" title="설정"
+                class="w-9 h-9 flex items-center justify-center rounded-md hover:bg-slate-100 dark:hover:bg-navy-800 text-lg">⚙️</button>
+        <button id="hamburgerBtn" title="메뉴" class="lg:hidden w-9 h-9 flex items-center justify-center rounded-md hover:bg-slate-100 dark:hover:bg-navy-800 text-lg">☰</button>
+      </div>
+    </div>
+    <!-- 모바일 탭 드롭 -->
+    <nav id="mobileTabBar" class="lg:hidden hidden flex-col gap-1 px-3 pb-3 border-t border-slate-200 dark:border-navy-800"></nav>
+  </header>
+
+  <!-- ============== 메인 ============== -->
+  <main class="max-w-screen-2xl mx-auto px-4 py-6">
+
+    <!-- 1. 홈 -->
+    <section id="tab-home" class="tab-pane">
+      <div class="flex items-end justify-between flex-wrap gap-2 mb-4">
+        <div>
+          <h1 id="homeGreeting" class="text-2xl font-bold text-navy-900 dark:text-navy-50">대표님, 오늘도 좋은 하루 보내세요</h1>
+          <p id="homeDateLine" class="text-sm text-slate-500 dark:text-slate-400"></p>
+        </div>
+        <div class="flex gap-2">
+          <button id="homeRefreshBtn" class="px-3 py-1.5 text-xs rounded-md border border-slate-300 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-navy-800">
+            새로고침
+          </button>
+          <button id="homeBriefBtn" class="px-3 py-1.5 text-xs rounded-md bg-navy-900 text-white hover:bg-navy-800">
+            모닝 브리핑 듣기
+          </button>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <!-- 좌측 컬럼 -->
+        <div class="space-y-4">
+          <div class="imw-card">
+            <div class="text-xs text-slate-500 dark:text-slate-400 mb-1">자금 잔고 (전 계좌 합계)</div>
+            <div id="homeCashBalance" class="text-3xl font-bold text-navy-900 dark:text-navy-50">―</div>
+            <div id="homeCashDelta" class="text-xs text-slate-500 dark:text-slate-400 mt-1"></div>
+          </div>
+
+          <div class="imw-card">
+            <div class="text-xs text-slate-500 dark:text-slate-400 mb-2">매출 KPI</div>
+            <div id="homeRevenueKPI" class="space-y-2 text-sm"></div>
+          </div>
+
+          <div class="imw-card">
+            <div class="text-xs text-slate-500 dark:text-slate-400 mb-2">주요 KPI 신호등</div>
+            <ul id="homeSignalList" class="space-y-2 text-sm"></ul>
+          </div>
+        </div>
+
+        <!-- 중앙 컬럼 -->
+        <div class="space-y-4">
+          <div class="imw-card">
+            <div class="flex items-center justify-between mb-2">
+              <div class="text-xs text-slate-500 dark:text-slate-400">오늘 일정</div>
+              <a href="#schedule" class="text-[11px] text-navy-500 hover:underline">전체 보기</a>
+            </div>
+            <ul id="homeScheduleList" class="space-y-2 text-sm"></ul>
+          </div>
+
+          <div class="imw-card">
+            <div class="flex items-center justify-between mb-2">
+              <div class="text-xs text-slate-500 dark:text-slate-400">결재 대기</div>
+              <span id="homePendingCount" class="text-[11px] text-slate-500"></span>
+            </div>
+            <ul id="homePendingList" class="space-y-2 text-sm"></ul>
+          </div>
+
+          <div class="imw-card">
+            <div class="text-xs text-slate-500 dark:text-slate-400 mb-2">AI 모닝 브리핑</div>
+            <ul id="homeBriefList" class="space-y-1 text-sm leading-relaxed list-disc list-inside"></ul>
+          </div>
+        </div>
+
+        <!-- 우측 컬럼 -->
+        <div class="space-y-4">
+          <div class="imw-card">
+            <div class="text-xs text-slate-500 dark:text-slate-400 mb-2">시장 위젯</div>
+            <div id="homeMarketWidget" class="grid grid-cols-2 gap-2 text-sm"></div>
+          </div>
+
+          <div class="imw-card">
+            <div class="text-xs text-slate-500 dark:text-slate-400 mb-2">헤드라인 뉴스</div>
+            <ul id="homeNewsList" class="space-y-2 text-sm"></ul>
+          </div>
+
+          <div class="imw-card">
+            <div class="text-xs text-slate-500 dark:text-slate-400 mb-2">자사 블로그 최신글</div>
+            <ul id="homeBlogList" class="space-y-2 text-sm"></ul>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 2. 보고서 -->
+    <section id="tab-reports" class="tab-pane">
+      <h1 class="text-2xl font-bold text-navy-900 dark:text-navy-50 mb-4">보고서</h1>
+
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <div class="lg:col-span-2 space-y-4">
+          <div id="dropZone"
+               class="imw-card border-2 border-dashed border-slate-300 dark:border-navy-800 hover:border-navy-500 transition cursor-pointer text-center py-10">
+            <div class="text-4xl mb-2">📂</div>
+            <div class="text-sm font-semibold text-navy-900 dark:text-navy-50">파일을 드래그하거나 클릭하여 업로드</div>
+            <div class="text-xs text-slate-500 mt-1">지원: PDF · 엑셀 · 이미지 · mp3/m4a · docx · txt</div>
+            <input id="fileInput" type="file" multiple
+                   accept=".pdf,.xls,.xlsx,.csv,.png,.jpg,.jpeg,.mp3,.m4a,.wav,.docx,.txt"
+                   class="hidden" />
+          </div>
+
+          <div class="imw-card">
+            <div class="flex items-center justify-between mb-3">
+              <div class="font-semibold text-navy-900 dark:text-navy-50">업로드된 파일</div>
+              <button id="clearFilesBtn" class="text-xs text-signal-red hover:underline">전체 삭제</button>
+            </div>
+            <ul id="reportFileList" class="space-y-1 text-sm"></ul>
+          </div>
+
+          <div class="imw-card">
+            <div class="flex items-center justify-between mb-2">
+              <div class="font-semibold text-navy-900 dark:text-navy-50">음성 보고 녹음</div>
+              <button id="voiceMemoBtn" class="px-3 py-1.5 text-xs rounded-md bg-navy-900 text-white hover:bg-navy-800">
+                ● 녹음 시작
+              </button>
+            </div>
+            <textarea id="voiceMemoText" rows="4"
+                      class="w-full px-3 py-2 text-sm border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-900"
+                      placeholder="음성 인식 결과가 여기에 입력됩니다."></textarea>
+          </div>
+        </div>
+
+        <div class="space-y-4">
+          <div class="imw-card">
+            <div class="font-semibold text-navy-900 dark:text-navy-50 mb-2">AI 요약</div>
+            <div id="reportSummaryPane" class="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
+              <p class="text-slate-400">파일을 선택하면 1줄 결론 + 3줄 핵심 + 3대 액션 요약이 표시됩니다.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 3. 시각화 -->
+    <section id="tab-viz" class="tab-pane">
+      <div class="flex items-end justify-between flex-wrap gap-2 mb-4">
+        <h1 class="text-2xl font-bold text-navy-900 dark:text-navy-50">시각화</h1>
+        <div class="flex gap-2">
+          <select id="vizDataSelect"
+                  class="px-3 py-1.5 text-sm border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-900">
+            <option value="revenue">월별 매출</option>
+            <option value="profit">월별 영업이익</option>
+            <option value="cash">월별 현금잔고</option>
+            <option value="pipeline">영업 파이프라인</option>
+            <option value="customers">고객사 매출 Top</option>
+          </select>
+          <select id="vizChartType"
+                  class="px-3 py-1.5 text-sm border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-900">
+            <option value="bar">막대</option>
+            <option value="line">라인</option>
+            <option value="doughnut">도넛</option>
+          </select>
+        </div>
+      </div>
+
+      <div id="vizGrid" class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div class="imw-card md:col-span-2">
+          <div class="text-xs text-slate-500 dark:text-slate-400 mb-2" id="vizMainTitle">차트</div>
+          <div class="h-72"><canvas id="vizMainChart"></canvas></div>
+        </div>
+        <div class="imw-card">
+          <div class="text-xs text-slate-500 dark:text-slate-400">큰 숫자 카드</div>
+          <div id="vizBigNumber" class="text-3xl font-bold text-navy-900 dark:text-navy-50 mt-2">―</div>
+          <div id="vizBigSubtitle" class="text-xs text-slate-500 mt-1"></div>
+        </div>
+        <div class="imw-card">
+          <div class="text-xs text-slate-500 dark:text-slate-400 mb-2">미니 막대</div>
+          <div class="h-40"><canvas id="vizMiniBar"></canvas></div>
+        </div>
+        <div class="imw-card">
+          <div class="text-xs text-slate-500 dark:text-slate-400 mb-2">미니 라인</div>
+          <div class="h-40"><canvas id="vizMiniLine"></canvas></div>
+        </div>
+        <div class="imw-card">
+          <div class="text-xs text-slate-500 dark:text-slate-400 mb-2">도넛</div>
+          <div class="h-40"><canvas id="vizMiniDoughnut"></canvas></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 4. 재무 -->
+    <section id="tab-finance" class="tab-pane">
+      <h1 class="text-2xl font-bold text-navy-900 dark:text-navy-50 mb-4">재무</h1>
+
+      <div id="financeKpiGrid" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 mb-4"></div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <div class="imw-card lg:col-span-2">
+          <div class="flex items-center justify-between mb-2">
+            <div class="font-semibold text-navy-900 dark:text-navy-50">월별 매출 / 영업이익 추이</div>
+            <span class="text-[11px] text-slate-500">단위: 자동 (원/만/억)</span>
+          </div>
+          <div class="h-72"><canvas id="financeMonthlyChart"></canvas></div>
+        </div>
+        <div class="imw-card">
+          <div class="font-semibold text-navy-900 dark:text-navy-50 mb-2">자금일보</div>
+          <div class="overflow-x-auto">
+            <table class="w-full text-xs">
+              <thead>
+                <tr class="text-slate-500 border-b border-slate-200 dark:border-navy-800">
+                  <th class="text-left py-1.5">일자</th>
+                  <th class="text-right">잔고</th>
+                  <th class="text-right">만기어음</th>
+                </tr>
+              </thead>
+              <tbody id="financeDailyTbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 5. 영업 -->
+    <section id="tab-sales" class="tab-pane">
+      <h1 class="text-2xl font-bold text-navy-900 dark:text-navy-50 mb-4">영업</h1>
+
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
+        <div class="imw-card">
+          <div class="font-semibold text-navy-900 dark:text-navy-50 mb-3">영업 파이프라인 (5단계)</div>
+          <div id="salesFunnel" class="space-y-2"></div>
+        </div>
+        <div class="imw-card">
+          <div class="font-semibold text-navy-900 dark:text-navy-50 mb-2">영업사원 / 지점 실적</div>
+          <div class="h-64"><canvas id="salesPersonChart"></canvas></div>
+        </div>
+      </div>
+
+      <div class="imw-card">
+        <div class="font-semibold text-navy-900 dark:text-navy-50 mb-3">고객사별 매출·마진</div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead>
+              <tr class="text-slate-500 border-b border-slate-200 dark:border-navy-800">
+                <th class="text-left py-2">고객사</th>
+                <th class="text-right">YTD 매출</th>
+                <th class="text-right">YTD 마진</th>
+                <th class="text-right">마진율</th>
+                <th class="text-center">상태</th>
+              </tr>
+            </thead>
+            <tbody id="salesCustomersTbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- 6. 인사 -->
+    <section id="tab-hr" class="tab-pane">
+      <h1 class="text-2xl font-bold text-navy-900 dark:text-navy-50 mb-4">인사</h1>
+
+      <div id="hrKpiGrid" class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4"></div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-4">
+        <div class="imw-card lg:col-span-2">
+          <div class="font-semibold text-navy-900 dark:text-navy-50 mb-2">급여·복리후생·초과근무 추이</div>
+          <div class="h-64"><canvas id="hrCompChart"></canvas></div>
+        </div>
+        <div class="imw-card">
+          <div class="font-semibold text-navy-900 dark:text-navy-50 mb-2">핵심 인재 이탈 경보</div>
+          <ul id="hrFlightRiskList" class="space-y-2 text-sm"></ul>
+        </div>
+      </div>
+
+      <div class="imw-card">
+        <div class="font-semibold text-navy-900 dark:text-navy-50 mb-3">사내 공지·조직 변동 타임라인</div>
+        <ol id="hrTimeline" class="relative border-l-2 border-slate-200 dark:border-navy-800 ml-2 space-y-4 pl-4"></ol>
+      </div>
+    </section>
+
+    <!-- 7~12 컨테이너만 (빌더 B) -->
+    <section id="tab-schedule" class="tab-pane">
+      <h1 class="text-2xl font-bold text-navy-900 dark:text-navy-50 mb-4">일정</h1>
+      <div id="scheduleContent" class="imw-card text-sm text-slate-500">
+        빌더 B 모듈에서 일정 모듈을 렌더합니다. (modules.js의 renderScheduleTab)
+      </div>
+    </section>
+
+    <section id="tab-kpi" class="tab-pane">
+      <h1 class="text-2xl font-bold text-navy-900 dark:text-navy-50 mb-4">KPI</h1>
+      <div id="kpiContent" class="imw-card text-sm text-slate-500">
+        빌더 B 모듈에서 KPI 모듈을 렌더합니다. (modules.js의 renderKpiTab)
+      </div>
+    </section>
+
+    <section id="tab-market" class="tab-pane">
+      <h1 class="text-2xl font-bold text-navy-900 dark:text-navy-50 mb-4">시장</h1>
+      <div id="marketContent" class="imw-card text-sm text-slate-500">
+        빌더 B 모듈에서 시장 모듈을 렌더합니다. (modules.js의 renderMarketTab)
+      </div>
+    </section>
+
+    <section id="tab-news" class="tab-pane">
+      <h1 class="text-2xl font-bold text-navy-900 dark:text-navy-50 mb-4">뉴스</h1>
+      <div id="newsContent" class="imw-card text-sm text-slate-500">
+        빌더 B 모듈에서 뉴스 모듈을 렌더합니다. (modules.js의 renderNewsTab)
+      </div>
+    </section>
+
+    <section id="tab-tenders" class="tab-pane">
+      <h1 class="text-2xl font-bold text-navy-900 dark:text-navy-50 mb-4">입찰</h1>
+      <div id="tendersContent" class="imw-card text-sm text-slate-500">
+        빌더 B 모듈에서 입찰 모듈을 렌더합니다. (modules.js의 renderTendersTab)
+      </div>
+    </section>
+
+    <section id="tab-cards" class="tab-pane">
+      <h1 class="text-2xl font-bold text-navy-900 dark:text-navy-50 mb-4">명함</h1>
+      <div id="cardsContent" class="imw-card text-sm text-slate-500">
+        빌더 B 모듈에서 명함 모듈을 렌더합니다. (modules.js의 renderCardsTab)
+      </div>
+    </section>
+  </main>
+
+  <!-- ============== 푸터 ============== -->
+  <footer class="border-t border-slate-200 dark:border-navy-800 mt-10">
+    <div class="max-w-screen-2xl mx-auto px-4 py-6 text-center text-xs text-slate-500 dark:text-slate-400">
+      임원실 v0.1 — © 2026 다풀림행정사 · 라이센스 발급 문의 <a href="mailto:bsj0431@gmail.com" class="underline">bsj0431@gmail.com</a>
+    </div>
+  </footer>
+
+  <!-- ============== 빌더 B 모듈 (있으면 로드) ============== -->
+  <script src="assets/data.js" onerror="console.warn('data.js 미존재 — 더미 데이터 사용')"></script>
+  <script src="assets/modules.js" onerror="console.warn('modules.js 미존재 — placeholder 사용')"></script>
+
+  <!-- ============== 메인 앱 스크립트 ============== -->
+  <script>
+  (function () {
+    'use strict';
+
+    // ===================== 상수·전역 =====================
+    const TABS = [
+      { id: 'home',     label: '홈' },
+      { id: 'reports',  label: '보고서' },
+      { id: 'viz',      label: '시각화' },
+      { id: 'finance',  label: '재무' },
+      { id: 'sales',    label: '영업' },
+      { id: 'hr',       label: '인사' },
+      { id: 'schedule', label: '일정' },
+      { id: 'kpi',      label: 'KPI' },
+      { id: 'market',   label: '시장' },
+      { id: 'news',     label: '뉴스' },
+      { id: 'tenders',  label: '입찰' },
+      { id: 'cards',    label: '명함' }
+    ];
+
+    const LS = {
+      LICENSE:   'imwon.license',
+      THEME:     'imwon.theme',
+      AI_PROV:   'imwon.aiProvider',
+      AI_KEY:    'imwon.aiKey',
+      CEO_NAME:  'imwon.ceoName',
+      REPORTS:   'imwon.reports'
+    };
+
+    // 더미 데이터(빌더 B의 IMWON_DEMO 미존재 시 폴백)
+    const FALLBACK_DEMO = {
+      company: { name: '주식회사 데모', ceo: '대표' },
+      finance: {
+        kpis: {
+          revenue:            { current: 1280, prevMonth: 1190, prevYear: 1080, target: 1500, status: 'yellow' },
+          operatingProfit:    { current:  142, prevMonth:  120, prevYear:  110, target:  200, status: 'yellow' },
+          cashBalance:        { current:  870, prevMonth:  920, prevYear:  780, target:  900, status: 'yellow' },
+          creditLine:         { current:  500, prevMonth:  500, prevYear:  500, target:  800, status: 'red'    },
+          accountsReceivable: { current:  340, prevMonth:  320, prevYear:  300, target:  300, status: 'yellow' }
+        },
+        monthly: [
+          { month: '2025-12', revenue: 1100, operatingProfit: 110, cashBalance: 800 },
+          { month: '2026-01', revenue: 1150, operatingProfit: 115, cashBalance: 820 },
+          { month: '2026-02', revenue: 1190, operatingProfit: 120, cashBalance: 920 },
+          { month: '2026-03', revenue: 1230, operatingProfit: 130, cashBalance: 880 },
+          { month: '2026-04', revenue: 1280, operatingProfit: 142, cashBalance: 870 }
+        ],
+        daily: [
+          { date: '2026-04-29', cashBalance: 880, dueNotes: 0   },
+          { date: '2026-04-30', cashBalance: 920, dueNotes: 0   },
+          { date: '2026-05-01', cashBalance: 870, dueNotes: 50  },
+          { date: '2026-05-02', cashBalance: 820, dueNotes: 50  },
+          { date: '2026-05-03', cashBalance: 870, dueNotes: 0   }
+        ]
+      },
+      sales: {
+        pipeline: [
+          { stage: '리드',      count: 42, amount: 4200 },
+          { stage: '견적',      count: 28, amount: 3100 },
+          { stage: '제안',      count: 15, amount: 2200 },
+          { stage: '계약협상',  count:  8, amount: 1500 },
+          { stage: '수주확정',  count:  5, amount:  980 }
+        ],
+        customers: [
+          { name: 'A전자',     ytdRevenue: 320, ytdMargin:  48, status: 'green'  },
+          { name: 'B산업',     ytdRevenue: 280, ytdMargin:  35, status: 'green'  },
+          { name: 'C유통',     ytdRevenue: 210, ytdMargin: -12, status: 'red'    },
+          { name: 'D상사',     ytdRevenue: 180, ytdMargin:  25, status: 'green'  },
+          { name: 'E엔지니어링', ytdRevenue: 150, ytdMargin:  18, status: 'yellow' }
+        ],
+        salespeople: [
+          { name: '김철수', achievement: 1280, target: 1500 },
+          { name: '이영희', achievement: 1150, target: 1200 },
+          { name: '박민수', achievement:  920, target: 1000 },
+          { name: '정수진', achievement:  850, target: 1000 }
+        ]
+      },
+      hr: {
+        summary: { totalEmployees: 87, turnoverRate: 8.4, leaveUsage: 62, pendingApprovals: 11 },
+        compensation: [
+          { month: '2025-12', payroll: 320, benefits: 28, overtime: 18 },
+          { month: '2026-01', payroll: 322, benefits: 29, overtime: 20 },
+          { month: '2026-02', payroll: 325, benefits: 30, overtime: 24 },
+          { month: '2026-03', payroll: 328, benefits: 31, overtime: 22 },
+          { month: '2026-04', payroll: 331, benefits: 32, overtime: 26 }
+        ],
+        flightRisk: [
+          { name: '홍길동', dept: '연구개발', riskScore: 82, signals: ['지각 증가', '성과 하락'] },
+          { name: '김영수', dept: '영업',     riskScore: 71, signals: ['설문 점수 낮음']        },
+          { name: '이정민', dept: '제조',     riskScore: 65, signals: ['연차 급증']              }
+        ],
+        timeline: [
+          { date: '2026-05-02', type: '공지', content: '5월 정기 임원회의 일정 변경' },
+          { date: '2026-04-28', type: '인사', content: '신규 입사자 3명 OJT 시작'    },
+          { date: '2026-04-20', type: '조직', content: '기획실 신설 및 팀장 임명'    }
+        ]
+      },
+      schedule: [
+        { time: '09:30', title: '주간 임원회의',        place: '본사 대회의실' },
+        { time: '11:00', title: 'A전자 임원 미팅',      place: 'A전자 사옥'    },
+        { time: '14:00', title: '신제품 검토 회의',      place: 'R&D센터'       },
+        { time: '16:00', title: '재무팀 자금 보고',      place: '집무실'        },
+        { time: '18:30', title: 'B상공회의소 만찬',      place: '롯데호텔'      }
+      ],
+      kpi: [],
+      market: { kospi: 2845.12, kospiDelta: '+0.42%', usdkrw: 1352.40, usdkrwDelta: '-0.18%' },
+      news: [
+        { title: '한국은행 기준금리 동결',       source: '연합뉴스', date: '2026-05-03', url: '#', summary: '' },
+        { title: '반도체 수출 3개월 연속 증가',   source: '매일경제', date: '2026-05-03', url: '#', summary: '' },
+        { title: '중기부 中企 R&D 지원 확대',    source: '디지털타임스', date: '2026-05-02', url: '#', summary: '' },
+        { title: '환율 1,350원대 안정세',         source: '한국경제', date: '2026-05-02', url: '#', summary: '' },
+        { title: 'AI 도입 中企 생산성 22% 향상', source: '서울경제', date: '2026-05-02', url: '#', summary: '' }
+      ],
+      policy: [],
+      tenders: [],
+      cards:   [],
+      reports: [],
+      webStats: {
+        naverSearch: 142,
+        blogPosts: [
+          { title: '신제품 출시 안내',         date: '2026-04-30', url: '#' },
+          { title: '4월 회사 소식',            date: '2026-04-28', url: '#' },
+          { title: 'ESG 경영 보고서 발간',    date: '2026-04-22', url: '#' }
+        ],
+        gaSummary: ''
+      },
+      pendingApprovals: [
+        { title: '4월 마감 결재',     dept: '재무팀', amount: 12 },
+        { title: '신규 거래처 등록', dept: '영업팀', amount:  3 },
+        { title: '연차 승인 요청',   dept: '인사팀', amount:  5 }
+      ]
+    };
+
+    function getDemo() {
+      return (window.IMWON_DEMO && typeof window.IMWON_DEMO === 'object')
+        ? Object.assign({}, FALLBACK_DEMO, window.IMWON_DEMO)
+        : FALLBACK_DEMO;
+    }
+
+    // ===================== 유틸 =====================
+    const $  = (s, r) => (r || document).querySelector(s);
+    const $$ = (s, r) => Array.from((r || document).querySelectorAll(s));
+
+    function fmtNum(n) {
+      if (n === null || n === undefined || isNaN(n)) return '―';
+      return Number(n).toLocaleString('ko-KR');
+    }
+    function fmtMoney(n) {
+      if (n === null || n === undefined || isNaN(n)) return '―';
+      // 빌더 B의 formatKRW가 있으면 위임 (한국식 자동 단위 변환: 12.4억 / 1,240만원)
+      if (window.IMWON_MODULES && typeof window.IMWON_MODULES.formatKRW === 'function') {
+        return window.IMWON_MODULES.formatKRW(Number(n));
+      }
+      // 폴백: 동일 로직
+      const num = Number(n);
+      const abs = Math.abs(num);
+      const sign = num < 0 ? '-' : '';
+      if (abs >= 1e12) return sign + (abs / 1e12).toFixed(2) + '조';
+      if (abs >= 1e8)  return sign + (abs / 1e8).toFixed(1) + '억';
+      if (abs >= 1e4)  return sign + Math.round(abs / 1e4).toLocaleString('ko-KR') + '만원';
+      return sign + abs.toLocaleString('ko-KR') + '원';
+    }
+    function deltaPct(curr, prev) {
+      if (!prev || isNaN(curr) || isNaN(prev)) return null;
+      return ((curr - prev) / prev) * 100;
+    }
+    function arrowText(pct) {
+      if (pct === null || pct === undefined) return '―';
+      const arrow = pct > 0 ? '▲' : (pct < 0 ? '▼' : '―');
+      return arrow + ' ' + Math.abs(pct).toFixed(1) + '%';
+    }
+    function arrowColor(pct, invert) {
+      if (pct === null || pct === undefined || pct === 0) return 'text-slate-500';
+      const positive = invert ? pct < 0 : pct > 0;
+      return positive ? 'text-signal-green' : 'text-signal-red';
+    }
+    function statusColor(s) {
+      if (s === 'green')  return 'bg-signal-green';
+      if (s === 'yellow') return 'bg-signal-yellow';
+      if (s === 'red')    return 'bg-signal-red';
+      return 'bg-slate-300';
+    }
+    function safeText(el, txt) { if (el) el.textContent = txt == null ? '' : String(txt); }
+    function clearChildren(el) { if (!el) return; while (el.firstChild) el.removeChild(el.firstChild); }
+    function el(tag, attrs, children) {
+      const e = document.createElement(tag);
+      if (attrs) Object.keys(attrs).forEach(k => {
+        if (k === 'class')   e.className = attrs[k];
+        else if (k === 'text') e.textContent = attrs[k];
+        else if (k === 'html') console.warn('html prop blocked:', attrs[k]);
+        else e.setAttribute(k, attrs[k]);
+      });
+      if (children) (Array.isArray(children) ? children : [children]).forEach(c => {
+        if (c == null) return;
+        e.appendChild(typeof c === 'string' ? document.createTextNode(c) : c);
+      });
+      return e;
+    }
+
+    // URL 화이트리스트 (외부 링크 안전화)
+    function safeUrl(u) {
+      if (!u || typeof u !== 'string') return '#';
+      try {
+        if (u === '#' || u.startsWith('#')) return u;
+        const url = new URL(u, window.location.href);
+        if (['http:', 'https:', 'mailto:'].includes(url.protocol)) return url.href;
+      } catch (e) { /* ignore */ }
+      return '#';
+    }
+
+    // ===================== 환영 안내 (Open 모드 — 라이센스 검증 없음) =====================
+    function isValidLicense(_key) {
+      // Open 데모 — 라이센스 검증을 사용하지 않습니다.
+      return true;
+    }
+
+    function checkLicense() {
+      // Open 데모 모드 — 첫 방문에만 환영 안내 모달을 1회 표시.
+      const modal = $('#welcomeModal');
+      const seen = localStorage.getItem('imwon.welcomed');
+      if (!modal) return true;
+      if (seen) {
+        modal.classList.remove('active');
+      } else {
+        modal.classList.add('active');
+      }
+      // 호환성을 위해 LICENSE 키에 OPEN 마커 저장
+      if (!localStorage.getItem(LS.LICENSE)) {
+        localStorage.setItem(LS.LICENSE, 'OPEN-DEMO');
+      }
+      return true;
+    }
+
+    function bindLicenseModal() {
+      const enterBtn = $('#enterDemoBtn');
+      if (!enterBtn) return;
+      enterBtn.addEventListener('click', () => {
+        localStorage.setItem('imwon.welcomed', '1');
+        const m = $('#welcomeModal');
+        if (m) m.classList.remove('active');
+      });
+      // 안전망: 12초 후 자동 닫기 (사용자가 모달을 무시한 경우)
+      setTimeout(() => {
+        const m = $('#welcomeModal');
+        if (m && m.classList.contains('active')) {
+          m.classList.remove('active');
+          localStorage.setItem('imwon.welcomed', '1');
+        }
+      }, 12000);
+    }
+
+    // ===================== 테마 =====================
+    function applyTheme(theme) {
+      if (theme === 'dark') document.documentElement.classList.add('dark');
+      else                   document.documentElement.classList.remove('dark');
+      const btn = $('#themeBtn');
+      if (btn) btn.textContent = theme === 'dark' ? '☀️' : '🌙';
+    }
+    function toggleTheme() {
+      const next = document.documentElement.classList.contains('dark') ? 'light' : 'dark';
+      localStorage.setItem(LS.THEME, next);
+      applyTheme(next);
+      // 차트 다시 그리기
+      renderActiveTab();
+    }
+
+    // ===================== 탭 라우팅 =====================
+    function buildTabBar() {
+      const desk = $('#tabBar');
+      const mob  = $('#mobileTabBar');
+      clearChildren(desk); clearChildren(mob);
+
+      TABS.forEach(t => {
+        const a1 = el('a', { href: '#' + t.id, class: 'tab-btn', 'data-tab': t.id, text: t.label });
+        desk.appendChild(a1);
+
+        const a2 = el('a', {
+          href: '#' + t.id, class: 'tab-btn block px-2 py-2', 'data-tab': t.id, text: t.label
+        });
+        a2.addEventListener('click', () => mob.classList.add('hidden'));
+        mob.appendChild(a2);
+      });
+    }
+
+    function activateTab(id) {
+      if (!TABS.find(t => t.id === id)) id = 'home';
+      $$('.tab-pane').forEach(p => p.classList.remove('active'));
+      const pane = $('#tab-' + id);
+      if (pane) pane.classList.add('active');
+
+      $$('.tab-btn').forEach(b => {
+        if (b.getAttribute('data-tab') === id) b.classList.add('active');
+        else                                    b.classList.remove('active');
+      });
+
+      renderTab(id);
+    }
+
+    function renderTab(id) {
+      try {
+        switch (id) {
+          case 'home':     renderHome();    break;
+          case 'reports':  renderReports(); break;
+          case 'viz':      renderViz();     break;
+          case 'finance':  renderFinance(); break;
+          case 'sales':    renderSales();   break;
+          case 'hr':       renderHR();      break;
+          case 'schedule': callBuilderB('renderSchedule', 'tab-schedule'); break;
+          case 'kpi':      callBuilderB('renderKPI',      'tab-kpi');      break;
+          case 'market':   callBuilderB('renderMarket',   'tab-market');   break;
+          case 'news':     callBuilderB('renderNews',     'tab-news');     break;
+          case 'tenders':  callBuilderB('renderTenders',  'tab-tenders');  break;
+          case 'cards':    callBuilderB('renderCards',    'tab-cards');    break;
+        }
+      } catch (e) {
+        console.error('renderTab error:', id, e);
+      }
+    }
+
+    function renderActiveTab() {
+      const id = (location.hash || '#home').replace('#', '');
+      renderTab(id);
+    }
+
+    function callBuilderB(fnName, containerId) {
+      // 빌더 B(modules.js)의 IMWON_MODULES 함수는 무인자로 호출하면
+      // 자체적으로 컨테이너(예: tab-schedule)를 찾아 그 자식을 비우고 다시 그립니다.
+      if (window.IMWON_MODULES && typeof window.IMWON_MODULES[fnName] === 'function') {
+        try {
+          window.IMWON_MODULES[fnName]();
+          return;
+        } catch (e) {
+          console.error('builder B error:', fnName, e);
+        }
+      }
+      // 폴백 placeholder
+      const container = document.getElementById(containerId);
+      if (container) {
+        while (container.firstChild) container.removeChild(container.firstChild);
+        const note = document.createElement('div');
+        note.className = 'imw-card text-sm text-slate-500';
+        note.textContent = 'modules.js의 ' + fnName + '() 가 정의되면 자동으로 채워집니다.';
+        container.appendChild(note);
+      }
+    }
+
+    // ===================== 차트 헬퍼 =====================
+    const chartCache = {};
+    function destroyChart(key) {
+      if (chartCache[key]) {
+        try { chartCache[key].destroy(); } catch (e) {}
+        delete chartCache[key];
+      }
+    }
+    function isDark() { return document.documentElement.classList.contains('dark'); }
+    function chartTextColor() { return isDark() ? '#CBD5E1' : '#475569'; }
+    function chartGridColor() { return isDark() ? 'rgba(148,163,184,0.15)' : 'rgba(100,116,139,0.15)'; }
+    function chartPalette() {
+      return {
+        navy:    '#0B2545',
+        navyMid: '#1F3A5F',
+        navyLite:'#6B8DB5',
+        gray:    isDark() ? '#475569' : '#CBD5E1'
+      };
+    }
+    function commonChartOpts(extra) {
+      const txt  = chartTextColor();
+      const grid = chartGridColor();
+      const base = {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { labels: { color: txt, font: { size: 11 } } },
+          tooltip: { backgroundColor: '#0B2545' }
+        },
+        scales: {
+          x: { ticks: { color: txt, font: { size: 11 } }, grid: { color: grid } },
+          y: { ticks: { color: txt, font: { size: 11 }, callback: function(v) {
+            const a = Math.abs(v);
+            if (a >= 1e12) return (v / 1e12).toFixed(1) + '조';
+            if (a >= 1e8)  return (v / 1e8).toFixed(1) + '억';
+            if (a >= 1e4)  return Math.round(v / 1e4) + '만';
+            return v.toLocaleString('ko-KR');
+          } }, grid: { color: grid } }
+        }
+      };
+      return Object.assign(base, extra || {});
+    }
+
+    // ===================== 메뉴 1. 홈 =====================
+    function renderHome() {
+      const D = getDemo();
+      const ceo = localStorage.getItem(LS.CEO_NAME) || (D.company && D.company.ceo) || '대표';
+      safeText($('#homeGreeting'), ceo + '님, 오늘도 좋은 하루 보내세요');
+
+      const today = new Date();
+      const dateStr = today.toLocaleDateString('ko-KR', {
+        year: 'numeric', month: 'long', day: 'numeric', weekday: 'long'
+      });
+      safeText($('#homeDateLine'), dateStr + ' · ' + ((D.company && D.company.name) || ''));
+
+      // 자금잔고
+      const cash = D.finance && D.finance.kpis && D.finance.kpis.cashBalance;
+      if (cash) {
+        safeText($('#homeCashBalance'), fmtMoney(cash.current));
+        const pct = deltaPct(cash.current, cash.prevMonth);
+        safeText($('#homeCashDelta'), '전월 대비 ' + arrowText(pct));
+      }
+
+      // 매출 KPI
+      const rev = D.finance && D.finance.kpis && D.finance.kpis.revenue;
+      const revBox = $('#homeRevenueKPI');
+      clearChildren(revBox);
+      if (rev) {
+        const mPct = deltaPct(rev.current, rev.prevMonth);
+        const yPct = deltaPct(rev.current, rev.prevYear);
+        revBox.appendChild(el('div', { class: 'flex items-baseline justify-between' }, [
+          el('span', { class: 'text-slate-500 text-xs' }, '당월 매출'),
+          el('span', { class: 'font-bold text-navy-900 dark:text-navy-50' }, fmtMoney(rev.current))
+        ]));
+        revBox.appendChild(el('div', { class: 'flex justify-between text-xs' }, [
+          el('span', { class: 'text-slate-500' }, '전월비'),
+          el('span', { class: arrowColor(mPct) }, arrowText(mPct))
+        ]));
+        revBox.appendChild(el('div', { class: 'flex justify-between text-xs' }, [
+          el('span', { class: 'text-slate-500' }, '전년동월비'),
+          el('span', { class: arrowColor(yPct) }, arrowText(yPct))
+        ]));
+      }
+
+      // 신호등 5개
+      const sigBox = $('#homeSignalList');
+      clearChildren(sigBox);
+      const kpis = (D.finance && D.finance.kpis) || {};
+      const labels = {
+        revenue: '매출', operatingProfit: '영업이익', cashBalance: '현금잔고',
+        creditLine: '여신한도잔여', accountsReceivable: '매출채권'
+      };
+      Object.keys(labels).forEach(k => {
+        const item = kpis[k];
+        const li = el('li', { class: 'flex items-center justify-between' }, [
+          el('span', { class: 'flex items-center gap-2' }, [
+            el('span', { class: 'dot ' + statusColor(item && item.status) }),
+            el('span', null, labels[k])
+          ]),
+          el('span', { class: 'text-slate-500 text-xs' }, item ? fmtNum(item.current) : '―')
+        ]);
+        sigBox.appendChild(li);
+      });
+
+      // 오늘 일정 — schedule이 배열 또는 객체({legal, birthdays, deadlines, meetings}) 모두 지원
+      const schBox = $('#homeScheduleList');
+      clearChildren(schBox);
+      const sch = D.schedule || {};
+      let scheduleItems = [];
+      if (Array.isArray(sch)) {
+        scheduleItems = sch;
+      } else {
+        const legal = (sch.legal || []).map(x => ({ date: x.date, title: x.type, place: '법정 신고' }));
+        const meet  = (sch.meetings || []).map(x => ({
+          date: (x.date || '').slice(0, 10),
+          time: (x.date || '').slice(11, 16),
+          title: x.title, place: x.location
+        }));
+        const dead  = (sch.deadlines || []).map(x => ({ date: x.date, title: x.content, place: x.type }));
+        const today = new Date(2026, 4, 3); // 2026-05-03
+        scheduleItems = legal.concat(meet, dead)
+          .map(x => {
+            const t = new Date((x.date || '') + 'T00:00:00');
+            return Object.assign({}, x, { _t: t });
+          })
+          .filter(x => !isNaN(x._t) && x._t >= today)
+          .sort((a, b) => a._t - b._t);
+      }
+      scheduleItems.slice(0, 5).forEach(s => {
+        schBox.appendChild(el('li', { class: 'flex items-start gap-3' }, [
+          el('span', { class: 'text-navy-500 font-mono text-xs w-12 shrink-0' }, s.time || s.date || ''),
+          el('div', { class: 'flex-1' }, [
+            el('div', { class: 'text-navy-900 dark:text-navy-50' }, s.title || ''),
+            el('div', { class: 'text-xs text-slate-500' }, s.place || '')
+          ])
+        ]));
+      });
+      if (scheduleItems.length === 0) schBox.appendChild(el('li', { class: 'text-slate-400 text-xs' }, '예정된 일정 없음'));
+
+      // 결재 대기 — pendingApprovals 배열이 있으면 그대로, 없으면 schedule.deadlines + hr.summary.pendingApprovals 숫자
+      const pendBox  = $('#homePendingList');
+      const pendCnt  = $('#homePendingCount');
+      clearChildren(pendBox);
+      let pend = [];
+      if (Array.isArray(D.pendingApprovals)) {
+        pend = D.pendingApprovals;
+      } else if (D.schedule && Array.isArray(D.schedule.deadlines)) {
+        pend = D.schedule.deadlines.map(x => ({ title: x.content, dept: x.type || '결재마감', amount: '' }));
+      }
+      const totalPending = (D.hr && D.hr.summary && D.hr.summary.pendingApprovals) || pend.length;
+      safeText(pendCnt, totalPending + '건');
+      pend.slice(0, 5).forEach(p => {
+        pendBox.appendChild(el('li', { class: 'flex justify-between' }, [
+          el('span', null, p.title || ''),
+          el('span', { class: 'text-xs text-slate-500' }, (p.dept || ''))
+        ]));
+      });
+      if (pend.length === 0) pendBox.appendChild(el('li', { class: 'text-slate-400 text-xs' }, '결재 대기 없음'));
+
+      // AI 모닝 브리핑 (5줄)
+      const briefBox = $('#homeBriefList');
+      clearChildren(briefBox);
+      const briefs = buildMorningBrief(D);
+      briefs.forEach(b => briefBox.appendChild(el('li', null, b)));
+
+      // 시장 위젯
+      const mkt = $('#homeMarketWidget');
+      clearChildren(mkt);
+      const m = D.market || {};
+      const cells = [
+        { label: 'KOSPI',  value: fmtNum(m.kospi),     delta: m.kospiDelta },
+        { label: '환율(USD)', value: fmtNum(m.usdkrw), delta: m.usdkrwDelta },
+        { label: '유가',    value: m.oil    || '―',    delta: m.oilDelta    || '' },
+        { label: '금',      value: m.gold   || '―',    delta: m.goldDelta   || '' }
+      ];
+      cells.forEach(c => {
+        mkt.appendChild(el('div', { class: 'p-2 rounded bg-slate-50 dark:bg-navy-800/50' }, [
+          el('div', { class: 'text-[10px] text-slate-500' }, c.label),
+          el('div', { class: 'font-bold text-navy-900 dark:text-navy-50' }, c.value),
+          el('div', { class: 'text-[10px] text-slate-500' }, c.delta || '')
+        ]));
+      });
+
+      // 헤드라인 뉴스
+      const newsBox = $('#homeNewsList');
+      clearChildren(newsBox);
+      (D.news || []).slice(0, 5).forEach(n => {
+        const a = el('a', {
+          href: safeUrl(n.url), target: '_blank', rel: 'noopener',
+          class: 'block hover:text-navy-500'
+        }, n.title || '');
+        newsBox.appendChild(el('li', null, [
+          a,
+          el('div', { class: 'text-[11px] text-slate-500' }, (n.source || '') + ' · ' + (n.date || ''))
+        ]));
+      });
+
+      // 자사 블로그
+      const blogBox = $('#homeBlogList');
+      clearChildren(blogBox);
+      const posts = (D.webStats && D.webStats.blogPosts) || [];
+      posts.slice(0, 3).forEach(p => {
+        blogBox.appendChild(el('li', null, [
+          el('a', { href: safeUrl(p.url), target: '_blank', rel: 'noopener', class: 'hover:text-navy-500' }, p.title || ''),
+          el('div', { class: 'text-[11px] text-slate-500' }, p.date || '')
+        ]));
+      });
+      if (posts.length === 0) blogBox.appendChild(el('li', { class: 'text-slate-400 text-xs' }, '게시글 없음'));
+    }
+
+    function buildMorningBrief(D) {
+      const out = [];
+      const rev = D.finance && D.finance.kpis && D.finance.kpis.revenue;
+      const cash = D.finance && D.finance.kpis && D.finance.kpis.cashBalance;
+      const prof = D.finance && D.finance.kpis && D.finance.kpis.operatingProfit;
+      if (rev)  out.push('당월 매출 ' + fmtMoney(rev.current) + ' (전월 대비 ' + arrowText(deltaPct(rev.current, rev.prevMonth)) + ').');
+      if (prof) out.push('영업이익 ' + fmtMoney(prof.current) + ' 으로 목표 달성률 ' + Math.round((prof.current / (prof.target || 1)) * 100) + '%.');
+      if (cash) out.push('현금잔고 ' + fmtMoney(cash.current) + ' (전월 대비 ' + arrowText(deltaPct(cash.current, cash.prevMonth)) + ').');
+      // schedule이 객체({legal, birthdays, deadlines, meetings})면 평탄화 후 카운트
+      const schedObj = D.schedule || {};
+      let schedCount = 0;
+      if (Array.isArray(schedObj)) {
+        schedCount = schedObj.length;
+      } else {
+        schedCount = ((schedObj.legal || []).length) + ((schedObj.meetings || []).length) + ((schedObj.deadlines || []).length);
+      }
+      out.push('이번 달 예정 일정 ' + schedCount + '건이 등록되어 있습니다.');
+      const risk = (D.hr && D.hr.flightRisk) || [];
+      if (risk.length > 0) out.push('인재 이탈 위험 ' + risk.length + '명 — ' + risk.map(r => r.name).slice(0, 3).join(', ') + ' 면담을 검토하세요.');
+      else                  out.push('주요 인사 리스크는 보고되지 않았습니다.');
+      return out.slice(0, 5);
+    }
+
+    // ===================== 메뉴 2. 보고서 =====================
+    function renderReports() {
+      renderReportFileList();
+    }
+
+    function loadReports() {
+      try { return JSON.parse(localStorage.getItem(LS.REPORTS) || '[]'); }
+      catch (e) { return []; }
+    }
+    function saveReports(arr) {
+      try { localStorage.setItem(LS.REPORTS, JSON.stringify(arr)); }
+      catch (e) { console.error(e); }
+    }
+
+    function renderReportFileList() {
+      const list = $('#reportFileList');
+      if (!list) return;
+      clearChildren(list);
+      const files = loadReports();
+      if (files.length === 0) {
+        list.appendChild(el('li', { class: 'text-slate-400 text-xs' }, '업로드된 파일이 없습니다.'));
+        return;
+      }
+      files.forEach((f, idx) => {
+        const li = el('li', { class: 'flex items-center justify-between p-2 rounded hover:bg-slate-50 dark:hover:bg-navy-800/50 cursor-pointer' }, [
+          el('div', { class: 'flex items-center gap-2 min-w-0' }, [
+            el('span', null, fileIcon(f.name)),
+            el('div', { class: 'min-w-0' }, [
+              el('div', { class: 'truncate text-navy-900 dark:text-navy-50' }, f.name),
+              el('div', { class: 'text-[11px] text-slate-500' }, formatBytes(f.size) + ' · ' + (f.uploadedAt || ''))
+            ])
+          ]),
+          el('button', { class: 'text-xs text-signal-red shrink-0 ml-2', 'data-idx': String(idx) }, '삭제')
+        ]);
+        li.addEventListener('click', e => {
+          if (e.target.tagName === 'BUTTON') {
+            e.stopPropagation();
+            const i = Number(e.target.getAttribute('data-idx'));
+            const arr = loadReports();
+            arr.splice(i, 1);
+            saveReports(arr);
+            renderReportFileList();
+          } else {
+            summarizeReport(f);
+          }
+        });
+        list.appendChild(li);
+      });
+    }
+
+    function fileIcon(name) {
+      const n = (name || '').toLowerCase();
+      if (n.endsWith('.pdf')) return '📕';
+      if (n.endsWith('.xls') || n.endsWith('.xlsx') || n.endsWith('.csv')) return '📊';
+      if (n.endsWith('.png') || n.endsWith('.jpg') || n.endsWith('.jpeg')) return '🖼️';
+      if (n.endsWith('.mp3') || n.endsWith('.m4a') || n.endsWith('.wav')) return '🎵';
+      if (n.endsWith('.docx') || n.endsWith('.doc')) return '📄';
+      return '📎';
+    }
+    function formatBytes(b) {
+      if (!b) return '0 B';
+      const u = ['B','KB','MB','GB'];
+      let i = 0;
+      while (b >= 1024 && i < u.length - 1) { b /= 1024; i++; }
+      return b.toFixed(1) + ' ' + u[i];
+    }
+
+    function bindReportsUI() {
+      const dz    = $('#dropZone');
+      const inp   = $('#fileInput');
+      const clear = $('#clearFilesBtn');
+
+      if (dz && inp) {
+        dz.addEventListener('click', () => inp.click());
+        dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('border-navy-500'); });
+        dz.addEventListener('dragleave', () => dz.classList.remove('border-navy-500'));
+        dz.addEventListener('drop', e => {
+          e.preventDefault();
+          dz.classList.remove('border-navy-500');
+          handleFiles(e.dataTransfer.files);
+        });
+        inp.addEventListener('change', e => handleFiles(e.target.files));
+      }
+      if (clear) {
+        clear.addEventListener('click', () => {
+          if (confirm('업로드된 파일 목록을 모두 삭제하시겠습니까?')) {
+            saveReports([]);
+            renderReportFileList();
+          }
+        });
+      }
+      // 음성 메모
+      const vBtn = $('#voiceMemoBtn');
+      if (vBtn) {
+        vBtn.addEventListener('click', () => {
+          startSTT(text => {
+            const ta = $('#voiceMemoText');
+            ta.value = (ta.value ? ta.value + '\n' : '') + text;
+            summarizeText(text);
+          });
+        });
+      }
+    }
+
+    function handleFiles(fileList) {
+      const arr = loadReports();
+      Array.from(fileList || []).forEach(f => {
+        arr.unshift({
+          name: f.name, size: f.size, type: f.type,
+          uploadedAt: new Date().toLocaleString('ko-KR')
+        });
+      });
+      saveReports(arr.slice(0, 100));
+      renderReportFileList();
+    }
+
+    function summarizeReport(file) {
+      const pane = $('#reportSummaryPane');
+      clearChildren(pane);
+      pane.appendChild(el('div', { class: 'text-xs text-slate-500 mb-2' }, file.name));
+      pane.appendChild(el('div', { class: 'animate-pulse text-slate-400' }, 'AI 요약 생성 중...'));
+
+      callAI('아래 파일 메타데이터를 바탕으로 1줄 결론·3줄 핵심·3대 액션을 제시하시오.\n파일명: ' + file.name + '\n크기: ' + formatBytes(file.size))
+        .then(text => renderSummaryPane(pane, text))
+        .catch(e => {
+          console.error(e);
+          renderSummaryPane(pane, dummySummary(file.name));
+        });
+    }
+    function summarizeText(text) {
+      const pane = $('#reportSummaryPane');
+      clearChildren(pane);
+      pane.appendChild(el('div', { class: 'text-xs text-slate-500 mb-2' }, '음성 메모 요약'));
+      callAI('아래 음성 메모를 1줄 결론·3줄 핵심·3대 액션으로 요약하시오.\n' + text)
+        .then(t => renderSummaryPane(pane, t))
+        .catch(() => renderSummaryPane(pane, dummySummary('음성 메모')));
+    }
+
+    function dummySummary(name) {
+      return [
+        '【1줄 결론】 ' + name + ' 검토 결과 즉시 의사결정이 필요한 사안 1건이 식별되었습니다.',
+        '',
+        '【3줄 핵심】',
+        '· 매출 추세는 전월 대비 호전되었으나 일부 지표에서 경계 신호가 관찰됩니다.',
+        '· 비용 구조의 효율화 여지가 확인되며 단기 액션이 가능합니다.',
+        '· 핵심 거래처와의 관계는 안정적이나 수금 일정 점검이 권고됩니다.',
+        '',
+        '【3대 액션】',
+        '1. 재무팀에 자금 시뮬레이션 보강 지시',
+        '2. 영업본부에 적자 고객 대응 회의 소집',
+        '3. 인사팀에 핵심인재 면담 일정 잡도록 요청',
+        '',
+        '※ API 키를 등록하시면 실제 AI 요약이 동작합니다.'
+      ].join('\n');
+    }
+
+    function renderSummaryPane(pane, text) {
+      clearChildren(pane);
+      const pre = el('pre', { class: 'whitespace-pre-wrap text-sm text-slate-700 dark:text-slate-200 leading-relaxed font-pretendard' }, text);
+      pane.appendChild(pre);
+    }
+
+    // ===================== 메뉴 3. 시각화 =====================
+    function renderViz() {
+      drawVizMain();
+      drawVizMini();
+    }
+
+    function getVizSeries(key, D) {
+      const monthly = (D.finance && D.finance.monthly) || [];
+      switch (key) {
+        case 'revenue':
+          return { labels: monthly.map(m => m.month), values: monthly.map(m => m.revenue),         label: '매출(원)' };
+        case 'profit':
+          return { labels: monthly.map(m => m.month), values: monthly.map(m => m.operatingProfit), label: '영업이익(원)' };
+        case 'cash':
+          return { labels: monthly.map(m => m.month), values: monthly.map(m => m.cashBalance),     label: '현금잔고(원)' };
+        case 'pipeline': {
+          const p = (D.sales && D.sales.pipeline) || [];
+          return { labels: p.map(x => x.stage), values: p.map(x => x.amount), label: '파이프라인 금액(원)' };
+        }
+        case 'customers': {
+          const c = (D.sales && D.sales.customers) || [];
+          return { labels: c.map(x => x.name), values: c.map(x => x.ytdRevenue), label: '고객 매출(원)' };
+        }
+      }
+      return { labels: [], values: [], label: '' };
+    }
+
+    function drawVizMain() {
+      const D = getDemo();
+      const dataKey = $('#vizDataSelect').value;
+      const type    = $('#vizChartType').value;
+      const s = getVizSeries(dataKey, D);
+      safeText($('#vizMainTitle'), s.label);
+      safeText($('#vizBigNumber'), fmtNum(s.values.reduce((a, b) => a + (Number(b) || 0), 0)));
+      safeText($('#vizBigSubtitle'), '합계 / ' + s.values.length + '개 항목');
+
+      destroyChart('vizMain');
+      const ctx = document.getElementById('vizMainChart').getContext('2d');
+      const pal = chartPalette();
+      const ds = {
+        label: s.label, data: s.values,
+        backgroundColor: type === 'doughnut'
+          ? [pal.navy, pal.navyMid, pal.navyLite, '#94A3B8', '#CBD5E1', '#E2E8F0']
+          : (type === 'bar' ? pal.navy : 'rgba(11,37,69,0.15)'),
+        borderColor: pal.navy, borderWidth: 2,
+        tension: 0.3, fill: type === 'line'
+      };
+      chartCache.vizMain = new Chart(ctx, {
+        type,
+        data: { labels: s.labels, datasets: [ds] },
+        options: type === 'doughnut'
+          ? { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: chartTextColor() } } } }
+          : commonChartOpts({})
+      });
+    }
+
+    function drawVizMini() {
+      const D = getDemo();
+      const monthly = (D.finance && D.finance.monthly) || [];
+      const labels  = monthly.map(m => m.month);
+      const pal = chartPalette();
+
+      destroyChart('vizMiniBar');
+      chartCache.vizMiniBar = new Chart(document.getElementById('vizMiniBar').getContext('2d'), {
+        type: 'bar',
+        data: { labels, datasets: [{ label: '매출', data: monthly.map(m => m.revenue), backgroundColor: pal.navy }] },
+        options: commonChartOpts({ plugins: { legend: { display: false } } })
+      });
+      destroyChart('vizMiniLine');
+      chartCache.vizMiniLine = new Chart(document.getElementById('vizMiniLine').getContext('2d'), {
+        type: 'line',
+        data: { labels, datasets: [{ label: '영업이익', data: monthly.map(m => m.operatingProfit), borderColor: pal.navy, backgroundColor: 'rgba(11,37,69,0.1)', fill: true, tension: 0.3 }] },
+        options: commonChartOpts({ plugins: { legend: { display: false } } })
+      });
+      destroyChart('vizMiniDoughnut');
+      const pipeline = (D.sales && D.sales.pipeline) || [];
+      chartCache.vizMiniDoughnut = new Chart(document.getElementById('vizMiniDoughnut').getContext('2d'), {
+        type: 'doughnut',
+        data: {
+          labels: pipeline.map(p => p.stage),
+          datasets: [{
+            data: pipeline.map(p => p.amount),
+            backgroundColor: [pal.navy, pal.navyMid, pal.navyLite, '#94A3B8', '#CBD5E1']
+          }]
+        },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: chartTextColor(), font: { size: 10 } } } } }
+      });
+    }
+
+    // ===================== 메뉴 4. 재무 =====================
+    function renderFinance() {
+      const D = getDemo();
+      const grid = $('#financeKpiGrid');
+      clearChildren(grid);
+
+      const kpis = (D.finance && D.finance.kpis) || {};
+      const items = [
+        { key: 'revenue',            label: '매출',         invert: false },
+        { key: 'operatingProfit',    label: '영업이익',     invert: false },
+        { key: 'cashBalance',        label: '현금잔고',     invert: false },
+        { key: 'creditLine',         label: '여신한도잔여', invert: false },
+        { key: 'accountsReceivable', label: '매출채권',     invert: true  }
+      ];
+      items.forEach(it => {
+        const k = kpis[it.key];
+        if (!k) return;
+        const mPct = deltaPct(k.current, k.prevMonth);
+        const yPct = deltaPct(k.current, k.prevYear);
+        grid.appendChild(el('div', { class: 'imw-card' }, [
+          el('div', { class: 'flex items-center justify-between mb-1' }, [
+            el('span', { class: 'text-xs text-slate-500' }, it.label),
+            el('span', { class: 'dot ' + statusColor(k.status) })
+          ]),
+          el('div', { class: 'text-xl font-bold text-navy-900 dark:text-navy-50' }, fmtMoney(k.current)),
+          el('div', { class: 'flex justify-between text-[11px] mt-1' }, [
+            el('span', { class: arrowColor(mPct, it.invert) }, '월 ' + arrowText(mPct)),
+            el('span', { class: arrowColor(yPct, it.invert) }, '년 ' + arrowText(yPct))
+          ])
+        ]));
+      });
+
+      // 월별 차트
+      destroyChart('financeMonthly');
+      const monthly = (D.finance && D.finance.monthly) || [];
+      const pal = chartPalette();
+      chartCache.financeMonthly = new Chart(document.getElementById('financeMonthlyChart').getContext('2d'), {
+        type: 'line',
+        data: {
+          labels: monthly.map(m => m.month),
+          datasets: [
+            { label: '매출',    data: monthly.map(m => m.revenue),         borderColor: pal.navy,    backgroundColor: 'rgba(11,37,69,0.1)', tension: 0.3, fill: true  },
+            { label: '영업이익', data: monthly.map(m => m.operatingProfit), borderColor: pal.navyLite, backgroundColor: 'rgba(107,141,181,0.1)', tension: 0.3, fill: false }
+          ]
+        },
+        options: commonChartOpts()
+      });
+
+      // 자금일보 테이블
+      const tbody = $('#financeDailyTbody');
+      clearChildren(tbody);
+      ((D.finance && D.finance.daily) || []).forEach(d => {
+        tbody.appendChild(el('tr', { class: 'border-b border-slate-100 dark:border-navy-800/40' }, [
+          el('td', { class: 'py-1.5' }, d.date),
+          el('td', { class: 'text-right' }, fmtNum(d.cashBalance)),
+          el('td', { class: 'text-right ' + (d.dueNotes ? 'text-signal-red font-semibold' : 'text-slate-500') }, fmtNum(d.dueNotes))
+        ]));
+      });
+    }
+
+    // ===================== 메뉴 5. 영업 =====================
+    function renderSales() {
+      const D = getDemo();
+      const funnel = $('#salesFunnel');
+      clearChildren(funnel);
+      const pipeline = (D.sales && D.sales.pipeline) || [];
+      const max = Math.max.apply(null, pipeline.map(p => p.amount).concat([1]));
+      pipeline.forEach((p, i) => {
+        const pct = (p.amount / max) * 100;
+        funnel.appendChild(el('div', { class: 'flex items-center gap-3' }, [
+          el('div', { class: 'w-24 text-xs text-slate-600 dark:text-slate-300 shrink-0' }, p.stage),
+          el('div', { class: 'flex-1 bg-slate-100 dark:bg-navy-800 rounded h-7 overflow-hidden relative' }, [
+            (function () {
+              const bar = el('div', { class: 'h-full bg-navy-900 dark:bg-navy-500', style: 'width:' + pct.toFixed(1) + '%;' });
+              return bar;
+            })(),
+            el('div', { class: 'absolute inset-0 flex items-center justify-end px-2 text-[11px] text-slate-700 dark:text-slate-200' },
+               fmtNum(p.count) + '건 / ' + fmtMoney(p.amount))
+          ])
+        ]));
+      });
+
+      // 영업사원
+      destroyChart('salesPerson');
+      const sp = (D.sales && D.sales.salespeople) || [];
+      const pal = chartPalette();
+      chartCache.salesPerson = new Chart(document.getElementById('salesPersonChart').getContext('2d'), {
+        type: 'bar',
+        data: {
+          labels: sp.map(s => s.name),
+          datasets: [
+            { label: '실적', data: sp.map(s => s.achievement), backgroundColor: pal.navy },
+            { label: '목표', data: sp.map(s => s.target),      backgroundColor: pal.gray }
+          ]
+        },
+        options: commonChartOpts()
+      });
+
+      // 고객사 테이블
+      const tbody = $('#salesCustomersTbody');
+      clearChildren(tbody);
+      const customers = (D.sales && D.sales.customers) || [];
+      customers.forEach(c => {
+        // data.js의 ytdMargin은 이미 % 단위 (예: 14.2 = 14.2%) — 추가 계산 금지
+        const marginPct = (typeof c.ytdMargin === 'number') ? c.ytdMargin : 0;
+        const marginCls = c.ytdMargin < 0 ? 'text-signal-red font-semibold' : 'text-navy-900 dark:text-navy-50';
+        tbody.appendChild(el('tr', { class: 'border-b border-slate-100 dark:border-navy-800/40' }, [
+          el('td', { class: 'py-2' }, c.name),
+          el('td', { class: 'text-right' }, fmtMoney(c.ytdRevenue)),
+          el('td', { class: 'text-right ' + marginCls }, fmtMoney(c.ytdMargin)),
+          el('td', { class: 'text-right ' + marginCls }, marginPct.toFixed(1) + '%'),
+          el('td', { class: 'text-center' }, [el('span', { class: 'dot ' + statusColor(c.status) })])
+        ]));
+      });
+    }
+
+    // ===================== 메뉴 6. 인사 =====================
+    function renderHR() {
+      const D = getDemo();
+      const grid = $('#hrKpiGrid');
+      clearChildren(grid);
+      const s = (D.hr && D.hr.summary) || {};
+      const cards = [
+        { label: '재직자수',     value: fmtNum(s.totalEmployees) + '명',  sub: '전월 동일' },
+        { label: '이직률',       value: (s.turnoverRate || 0) + '%',      sub: 'YTD 누계' },
+        { label: '연차 소진율',   value: (s.leaveUsage   || 0) + '%',      sub: '평균' },
+        { label: '결재 대기',     value: fmtNum(s.pendingApprovals) + '건', sub: '인사 관련' }
+      ];
+      cards.forEach(c => {
+        grid.appendChild(el('div', { class: 'imw-card' }, [
+          el('div', { class: 'text-xs text-slate-500' }, c.label),
+          el('div', { class: 'text-2xl font-bold text-navy-900 dark:text-navy-50 mt-1' }, c.value),
+          el('div', { class: 'text-[11px] text-slate-500 mt-1' }, c.sub)
+        ]));
+      });
+
+      destroyChart('hrComp');
+      const comp = (D.hr && D.hr.compensation) || [];
+      const pal = chartPalette();
+      chartCache.hrComp = new Chart(document.getElementById('hrCompChart').getContext('2d'), {
+        type: 'line',
+        data: {
+          labels: comp.map(c => c.month),
+          datasets: [
+            { label: '급여',     data: comp.map(c => c.payroll),  borderColor: pal.navy,    backgroundColor: 'rgba(11,37,69,0.1)', tension: 0.3, fill: true },
+            { label: '복리후생', data: comp.map(c => c.benefits), borderColor: pal.navyLite, tension: 0.3, fill: false },
+            { label: '초과근무', data: comp.map(c => c.overtime), borderColor: '#F59E0B',    tension: 0.3, fill: false }
+          ]
+        },
+        options: commonChartOpts()
+      });
+
+      // flightRisk
+      const fr = $('#hrFlightRiskList');
+      clearChildren(fr);
+      ((D.hr && D.hr.flightRisk) || []).forEach(r => {
+        const color = r.riskScore >= 80 ? 'text-signal-red' : (r.riskScore >= 60 ? 'text-signal-yellow' : 'text-slate-500');
+        fr.appendChild(el('li', { class: 'p-2 rounded bg-slate-50 dark:bg-navy-800/40' }, [
+          el('div', { class: 'flex items-center justify-between' }, [
+            el('span', { class: 'font-semibold' }, r.name + ' (' + (r.dept || '') + ')'),
+            el('span', { class: 'font-bold ' + color }, (r.riskScore || 0) + '점')
+          ]),
+          el('div', { class: 'text-[11px] text-slate-500 mt-1' }, (r.signals || []).join(' · '))
+        ]));
+      });
+      if (((D.hr && D.hr.flightRisk) || []).length === 0) {
+        fr.appendChild(el('li', { class: 'text-slate-400 text-xs' }, '경보 없음'));
+      }
+
+      // 타임라인
+      const tl = $('#hrTimeline');
+      clearChildren(tl);
+      ((D.hr && D.hr.timeline) || []).forEach(t => {
+        tl.appendChild(el('li', { class: 'relative' }, [
+          el('div', { class: 'absolute -left-[22px] top-1 w-3 h-3 rounded-full bg-navy-900 dark:bg-navy-500 border-2 border-white dark:border-navy-900' }),
+          el('div', { class: 'text-[11px] text-slate-500' }, t.date + ' · ' + (t.type || '')),
+          el('div', { class: 'text-sm text-navy-900 dark:text-navy-50' }, t.content || '')
+        ]));
+      });
+    }
+
+    // ===================== 음성 입력 (STT) =====================
+    let recogActive = null;
+    function startSTT(onResult) {
+      const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (!SR) {
+        alert('이 브라우저는 음성 인식을 지원하지 않습니다. (Chrome 권장)');
+        return;
+      }
+      try {
+        if (recogActive) { recogActive.stop(); recogActive = null; return; }
+        const r = new SR();
+        r.lang = 'ko-KR';
+        r.continuous = false;
+        r.interimResults = false;
+        r.onresult = e => {
+          const text = Array.from(e.results).map(x => x[0].transcript).join(' ');
+          if (typeof onResult === 'function') onResult(text);
+          else routeSTTResult(text);
+        };
+        r.onerror = e => console.error('STT error', e);
+        r.onend = () => { recogActive = null; };
+        r.start();
+        recogActive = r;
+      } catch (e) {
+        console.error(e);
+        alert('음성 인식을 시작할 수 없습니다: ' + e.message);
+      }
+    }
+    function routeSTTResult(text) {
+      const active = (location.hash || '#home').replace('#', '');
+      if (active === 'reports') {
+        const ta = $('#voiceMemoText');
+        if (ta) ta.value = (ta.value ? ta.value + '\n' : '') + text;
+        summarizeText(text);
+      } else {
+        // 활성 탭에 검색창 있으면 그곳에 입력
+        const search = document.querySelector('#tab-' + active + ' input[type="search"], #tab-' + active + ' input[type="text"]');
+        if (search) search.value = text;
+        else alert('음성 인식 결과: ' + text);
+      }
+    }
+
+    // ===================== 음성 출력 (TTS) =====================
+    function speakCurrentPage() {
+      if (!('speechSynthesis' in window)) {
+        alert('이 브라우저는 음성 합성을 지원하지 않습니다.');
+        return;
+      }
+      const id = (location.hash || '#home').replace('#', '');
+      const text = collectPageSummary(id);
+      const utt = new SpeechSynthesisUtterance(text);
+      utt.lang = 'ko-KR';
+      const voices = speechSynthesis.getVoices();
+      const ko = voices.find(v => v.lang && v.lang.toLowerCase().startsWith('ko'));
+      if (ko) utt.voice = ko;
+      speechSynthesis.cancel();
+      speechSynthesis.speak(utt);
+    }
+    function collectPageSummary(id) {
+      const D = getDemo();
+      switch (id) {
+        case 'home':    return buildMorningBrief(D).join(' ');
+        case 'finance': {
+          const k = (D.finance && D.finance.kpis) || {};
+          return '재무 요약입니다. 매출 ' + fmtMoney(k.revenue && k.revenue.current) +
+                 ', 영업이익 ' + fmtMoney(k.operatingProfit && k.operatingProfit.current) +
+                 ', 현금잔고 ' + fmtMoney(k.cashBalance && k.cashBalance.current) + ' 입니다.';
+        }
+        case 'sales': {
+          const p = (D.sales && D.sales.pipeline) || [];
+          return '영업 파이프라인 ' + p.length + '단계 총합 ' +
+                 fmtMoney(p.reduce((a, b) => a + (b.amount || 0), 0)) + ' 입니다.';
+        }
+        case 'hr': {
+          const s = (D.hr && D.hr.summary) || {};
+          return '인사 요약: 재직자 ' + (s.totalEmployees || 0) + '명, 이직률 ' + (s.turnoverRate || 0) + '%, 결재 대기 ' + (s.pendingApprovals || 0) + '건.';
+        }
+        case 'reports': return '보고서 모듈입니다. 파일 업로드 또는 음성 메모 후 AI 요약을 확인하세요.';
+        case 'viz':     return '시각화 모듈입니다. 데이터 종류와 차트 형태를 선택하여 분석하세요.';
+        default:        return '임원실 대시보드. 현재 ' + id + ' 메뉴입니다.';
+      }
+    }
+
+    // ===================== AI 호출 (BYOK) =====================
+    async function callAI(prompt) {
+      const provider = localStorage.getItem(LS.AI_PROV) || 'openai';
+      const key      = localStorage.getItem(LS.AI_KEY);
+      if (!key) return Promise.reject(new Error('NO_KEY'));
+
+      try {
+        if (provider === 'openai') {
+          const r = await fetch('https://api.openai.com/v1/chat/completions', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key },
+            body: JSON.stringify({
+              model: 'gpt-4o-mini',
+              messages: [
+                { role: 'system', content: '당신은 한국 중소기업 경영 임원의 비서입니다. 존댓말과 한자어를 적절히 활용하여 간결하게 답변하세요.' },
+                { role: 'user',   content: prompt }
+              ],
+              temperature: 0.4
+            })
+          });
+          if (!r.ok) throw new Error('HTTP ' + r.status);
+          const j = await r.json();
+          return (j.choices && j.choices[0] && j.choices[0].message && j.choices[0].message.content) || '';
+        } else {
+          const r = await fetch('https://api.anthropic.com/v1/messages', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'x-api-key': key,
+              'anthropic-version': '2023-06-01',
+              'anthropic-dangerous-direct-browser-access': 'true'
+            },
+            body: JSON.stringify({
+              model: 'claude-3-5-sonnet-latest',
+              max_tokens: 1024,
+              system: '당신은 한국 중소기업 경영 임원의 비서입니다. 존댓말과 한자어를 적절히 활용하여 간결하게 답변하세요.',
+              messages: [{ role: 'user', content: prompt }]
+            })
+          });
+          if (!r.ok) throw new Error('HTTP ' + r.status);
+          const j = await r.json();
+          return (j.content && j.content[0] && j.content[0].text) || '';
+        }
+      } catch (e) {
+        console.error('AI 호출 실패', e);
+        throw e;
+      }
+    }
+
+    // ===================== 알림 =====================
+    function checkNotifications() {
+      if (!('Notification' in window)) return;
+      if (Notification.permission !== 'granted') return;
+      const D = getDemo();
+      // schedule이 객체({legal, birthdays, deadlines, meetings})면 가장 가까운 일정 추출
+      const schedObj2 = D.schedule || {};
+      let upcoming = null;
+      if (Array.isArray(schedObj2)) {
+        upcoming = schedObj2[0];
+      } else {
+        const merged = ((schedObj2.meetings || []).map(m => ({ date: (m.date || '').slice(0, 10), title: m.title })))
+          .concat((schedObj2.legal || []).map(l => ({ date: l.date, title: l.type })))
+          .concat((schedObj2.deadlines || []).map(d => ({ date: d.date, title: d.content })));
+        const today = new Date().toISOString().slice(0, 10);
+        upcoming = merged.filter(x => x.date >= today).sort((a, b) => a.date < b.date ? -1 : 1)[0];
+      }
+      if (upcoming) {
+        try {
+          new Notification('임원실 알림', {
+            body: '예정: ' + (upcoming.date || upcoming.time || '') + ' — ' + (upcoming.title || ''),
+            icon: ''
+          });
+        } catch (e) { /* ignore */ }
+      }
+    }
+
+    // ===================== 설정 모달 =====================
+    function bindSettingsModal() {
+      $('#settingsBtn').addEventListener('click', () => {
+        $('#aiProviderSelect').value = localStorage.getItem(LS.AI_PROV)  || 'openai';
+        $('#apiKeyInput').value      = localStorage.getItem(LS.AI_KEY)   || '';
+        $('#ceoNameInput').value     = localStorage.getItem(LS.CEO_NAME) || '';
+        $('#settingsModal').classList.add('active');
+      });
+      $('#closeSettingsBtn').addEventListener('click', () => $('#settingsModal').classList.remove('active'));
+      $('#saveSettingsBtn').addEventListener('click', () => {
+        localStorage.setItem(LS.AI_PROV,  $('#aiProviderSelect').value);
+        localStorage.setItem(LS.AI_KEY,   $('#apiKeyInput').value);
+        localStorage.setItem(LS.CEO_NAME, $('#ceoNameInput').value);
+        $('#settingsModal').classList.remove('active');
+        renderActiveTab();
+      });
+      $('#reqNotifBtn').addEventListener('click', () => {
+        if (!('Notification' in window)) { alert('이 브라우저는 알림을 지원하지 않습니다.'); return; }
+        Notification.requestPermission().then(p => alert('알림 권한: ' + p));
+      });
+      $('#resetDemoBtn').addEventListener('click', () => {
+        if (!confirm('데모 데이터(업로드 파일 목록 등)를 초기화하시겠습니까?')) return;
+        localStorage.removeItem(LS.REPORTS);
+        renderActiveTab();
+        alert('데모 데이터가 초기화되었습니다.');
+      });
+      $('#clearLicenseBtn').addEventListener('click', () => {
+        if (!confirm('라이센스 키를 제거하시겠습니까? 다음 진입 시 재입력이 필요합니다.')) return;
+        localStorage.removeItem(LS.LICENSE);
+        location.reload();
+      });
+    }
+
+    // ===================== 부팅 =====================
+    function bootApp() {
+      buildTabBar();
+
+      // 라우팅
+      window.addEventListener('hashchange', () => {
+        const id = (location.hash || '#home').replace('#', '');
+        activateTab(id);
+      });
+      const initial = (location.hash || '#home').replace('#', '');
+      activateTab(initial);
+
+      // 헤더 버튼
+      $('#themeBtn').addEventListener('click', toggleTheme);
+      $('#micBtn').addEventListener('click', () => startSTT());
+      $('#ttsBtn').addEventListener('click', speakCurrentPage);
+      $('#hamburgerBtn').addEventListener('click', () => $('#mobileTabBar').classList.toggle('hidden'));
+
+      // 시각화 입력 변화
+      const vds = $('#vizDataSelect');
+      const vct = $('#vizChartType');
+      if (vds) vds.addEventListener('change', drawVizMain);
+      if (vct) vct.addEventListener('change', drawVizMain);
+
+      // 보고서 UI
+      bindReportsUI();
+
+      // 홈 버튼
+      const refreshBtn = $('#homeRefreshBtn');
+      const briefBtn   = $('#homeBriefBtn');
+      if (refreshBtn) refreshBtn.addEventListener('click', () => renderHome());
+      if (briefBtn)   briefBtn.addEventListener('click',   () => speakCurrentPage());
+
+      // 알림 (권한 있을 때만 비차단 호출)
+      setTimeout(checkNotifications, 1500);
+    }
+
+    // ===================== 시작 =====================
+    document.addEventListener('DOMContentLoaded', () => {
+      // 테마 복원
+      const savedTheme = localStorage.getItem(LS.THEME) || 'light';
+      applyTheme(savedTheme);
+
+      // 모달 바인딩
+      bindLicenseModal();
+      bindSettingsModal();
+
+      // 라이센스 OK면 즉시 부팅
+      if (checkLicense()) bootApp();
+
+      // TTS voices preload
+      if ('speechSynthesis' in window) {
+        try { speechSynthesis.getVoices(); } catch (e) {}
+        speechSynthesis.onvoiceschanged = () => { /* keep */ };
+      }
+    });
+  })();
+  </script>
+</body>
+</html>
