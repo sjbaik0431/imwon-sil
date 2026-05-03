@@ -2821,26 +2821,143 @@
       pane.appendChild(pre);
     }
 
+    // 자동 추출 결과 기반의 의미 있는 더미 요약 (BYOK 키 없을 때)
+    function autoSummary(file, content) {
+      if (!content) {
+        return '【안내】 ' + (file && file.name ? file.name + ' 은 ' : '') +
+               '본문 추출이 지원되지 않는 형식입니다 (이미지·녹음·엑셀·Word 등). ' +
+               '텍스트(.txt/.md/.csv) 또는 PDF로 업로드 시 본문이 자동 추출되어 1줄 결론·3줄 핵심·3대 액션이 자동 생성됩니다.';
+      }
+      const p = parseReport(content);
+      const insights = [];
+      if (typeof p.finance.revenue === 'number'         && !isNaN(p.finance.revenue))         insights.push('매출 ' + fmtMoney(p.finance.revenue));
+      if (typeof p.finance.operatingProfit === 'number' && !isNaN(p.finance.operatingProfit)) insights.push('영업이익 ' + fmtMoney(p.finance.operatingProfit));
+      if (typeof p.finance.cashBalance === 'number'     && !isNaN(p.finance.cashBalance))     insights.push('현금잔고 ' + fmtMoney(p.finance.cashBalance));
+      if (typeof p.finance.operatingMargin === 'number' && !isNaN(p.finance.operatingMargin)) insights.push('영업이익률 ' + p.finance.operatingMargin + '%');
+      if (typeof p.finance.yieldRate === 'number'       && !isNaN(p.finance.yieldRate))       insights.push('수율 ' + p.finance.yieldRate + '%');
+      if (typeof p.hr.turnoverRate === 'number'         && !isNaN(p.hr.turnoverRate))         insights.push('이직률 ' + p.hr.turnoverRate + '%');
+      if (typeof p.hr.pendingApprovals === 'number'     && !isNaN(p.hr.pendingApprovals))     insights.push('결재대기 ' + p.hr.pendingApprovals + '건');
+      if (typeof p.hr.totalEmployees === 'number'       && !isNaN(p.hr.totalEmployees))       insights.push('재직자 ' + p.hr.totalEmployees + '명');
+      if (typeof p.sales.newOrders === 'number'         && !isNaN(p.sales.newOrders))         insights.push('신규수주 ' + p.sales.newOrders + '건');
+
+      let out = '';
+      if (insights.length > 0) {
+        out += '【1줄 결론】\n';
+        out += '본 보고서에서 ' + insights.slice(0, 4).join(', ') + ' 등 ' + insights.length + '개 핵심 지표가 자동 추출되었습니다.\n\n';
+        out += '【핵심 3줄】\n';
+        insights.slice(0, 3).forEach((s, i) => { out += (i + 1) + '. ' + s + '\n'; });
+        out += '\n【3대 액션】\n';
+        if (p.schedule.length > 0) {
+          p.schedule.slice(0, 3).forEach((s, i) => { out += (i + 1) + '. ' + s.date + ' — ' + s.title + ' 사전 점검\n'; });
+        } else {
+          // 휴리스틱 액션
+          if (p.finance.cashBalance < 1e9) out += '1. 현금잔고 모니터링 강화\n'; else out += '1. 핵심 지표 임원회의 공유\n';
+          if (p.hr.pendingApprovals >= 10) out += '2. 결재 적체 해소 방안 검토\n'; else out += '2. 익월 KPI 목표 재검토\n';
+          if (p.hr.turnoverRate >= 10) out += '3. 핵심인재 이탈 방지 면담 일정 수립\n'; else out += '3. 다음 주간 실적 점검\n';
+        }
+      } else {
+        out = '【안내】 본문에서 한국어 비즈니스 키워드를 인식하지 못했습니다.\n\n';
+        out += '추출된 본문 (앞 240자):\n' + content.slice(0, 240) + (content.length > 240 ? '...' : '');
+      }
+      return out;
+    }
+
+    // 보고서 본문을 LLM에 보내 1줄·3줄·3액션 형식으로 요약
+    // showReportPreview 위에 'AI 요약' 섹션을 prepend (본문 미리보기는 보존)
     function summarizeReport(file) {
       const pane = $('#reportSummaryPane');
-      clearChildren(pane);
-      pane.appendChild(el('div', { class: 'text-xs text-slate-500 mb-2' }, file.name));
-      pane.appendChild(el('div', { class: 'animate-pulse text-slate-400' }, 'AI 요약 생성 중...'));
+      if (!pane) return;
 
-      callAI('아래 파일 메타데이터를 바탕으로 1줄 결론·3줄 핵심·3대 액션을 제시하시오.\n파일명: ' + file.name + '\n크기: ' + formatBytes(file.size))
-        .then(text => renderSummaryPane(pane, text))
+      // AI 요약 섹션 컨테이너 (이미 있으면 재사용)
+      let ai = pane.querySelector('.imwon-ai-summary');
+      if (!ai) {
+        ai = document.createElement('div');
+        ai.className = 'imwon-ai-summary mb-3 pb-3 border-b border-slate-200 dark:border-navy-800';
+        pane.insertBefore(ai, pane.firstChild);
+      }
+      clearChildren(ai);
+
+      const title = el('div', { class: 'text-xs font-bold text-navy-900 dark:text-navy-50 mb-2' }, '✨ AI 요약');
+      ai.appendChild(title);
+
+      const content = (file && file.content) || '';
+      const D = (typeof getDemo === 'function') ? getDemo() : (window.IMWON_DEMO || {});
+      const company = (D.company && D.company.name) || '회사';
+
+      const key = localStorage.getItem(LS.AI_KEY);
+      // BYOK 키 없거나 본문 없음 → 자동 추출 기반 더미 요약 즉시 표시
+      if (!key || !content) {
+        const pre = document.createElement('pre');
+        pre.className = 'text-xs whitespace-pre-wrap leading-relaxed text-slate-700 dark:text-slate-300 m-0';
+        pre.textContent = autoSummary(file, content);
+        ai.appendChild(pre);
+        if (!key) {
+          ai.appendChild(el('div', { class: 'text-[11px] text-slate-500 mt-2 leading-relaxed' },
+            'ⓘ ⚙ 설정에서 OpenAI/Claude API 키를 등록하시면 LLM 기반 정밀 요약으로 격상됩니다.'));
+        }
+        return;
+      }
+
+      // BYOK 키 있음 → LLM 호출
+      ai.appendChild(el('div', { class: 'animate-pulse text-slate-400 text-xs' }, '✨ LLM이 보고서를 분석 중입니다...'));
+
+      const prompt =
+        '당신은 한국 중소기업 경영 임원의 비서입니다. 아래는 ' + company + '의 보고서 본문입니다.\n' +
+        '아래 형식으로 정리해 주세요. 추측 금지, 본문 근거만 사용. 한국어 존댓말.\n\n' +
+        '【1줄 결론】 (한 문장)\n' +
+        '【핵심 3줄】\n1. ...\n2. ...\n3. ...\n' +
+        '【3대 액션】\n1. ...\n2. ...\n3. ...\n\n' +
+        '파일명: ' + (file.name || '') + '\n' +
+        '본문:\n' + content.slice(0, 6000);
+
+      callAI(prompt)
+        .then(text => {
+          clearChildren(ai);
+          ai.appendChild(title);
+          const pre = document.createElement('pre');
+          pre.className = 'text-xs whitespace-pre-wrap leading-relaxed text-slate-700 dark:text-slate-300 m-0';
+          pre.textContent = text || autoSummary(file, content);
+          ai.appendChild(pre);
+        })
         .catch(e => {
-          console.error(e);
-          renderSummaryPane(pane, dummySummary(file.name));
+          clearChildren(ai);
+          ai.appendChild(title);
+          ai.appendChild(el('div', { class: 'text-[11px] text-signal-red mb-1' }, 'AI 요약 실패: ' + (e.message || 'unknown') + ' — 자동 추출 결과로 대체합니다.'));
+          const pre = document.createElement('pre');
+          pre.className = 'text-xs whitespace-pre-wrap leading-relaxed text-slate-700 dark:text-slate-300 m-0';
+          pre.textContent = autoSummary(file, content);
+          ai.appendChild(pre);
         });
     }
+
     function summarizeText(text) {
       const pane = $('#reportSummaryPane');
+      if (!pane) return;
       clearChildren(pane);
-      pane.appendChild(el('div', { class: 'text-xs text-slate-500 mb-2' }, '음성 메모 요약'));
-      callAI('아래 음성 메모를 1줄 결론·3줄 핵심·3대 액션으로 요약하시오.\n' + text)
-        .then(t => renderSummaryPane(pane, t))
-        .catch(() => renderSummaryPane(pane, dummySummary('음성 메모')));
+      pane.appendChild(el('div', { class: 'text-xs text-slate-500 mb-2' }, '🎤 음성 메모 요약'));
+
+      const fakeFile = { name: '음성 메모', size: text.length, content: text };
+      const key = localStorage.getItem(LS.AI_KEY);
+
+      if (!key) {
+        const pre = document.createElement('pre');
+        pre.className = 'text-xs whitespace-pre-wrap leading-relaxed text-slate-700 dark:text-slate-300 m-0';
+        pre.textContent = autoSummary(fakeFile, text);
+        pane.appendChild(pre);
+        pane.appendChild(el('div', { class: 'text-[11px] text-slate-500 mt-2' },
+          'ⓘ ⚙ 설정에서 OpenAI/Claude API 키를 등록하시면 LLM 기반 정밀 요약으로 격상됩니다.'));
+        return;
+      }
+
+      pane.appendChild(el('div', { class: 'animate-pulse text-slate-400 text-xs' }, '✨ LLM 분석 중...'));
+      const prompt =
+        '당신은 한국 중소기업 경영 임원의 비서입니다. 아래는 임원이 음성으로 남긴 메모입니다.\n' +
+        '【1줄 결론】 / 【핵심 3줄】 / 【3대 액션】 형식으로 한국어 존댓말로 정리해 주세요.\n\n' +
+        text.slice(0, 4000);
+
+      callAI(prompt)
+        .then(t => renderSummaryPane(pane, t || autoSummary(fakeFile, text)))
+        .catch(() => renderSummaryPane(pane, autoSummary(fakeFile, text)));
     }
 
     function dummySummary(name) {
