@@ -756,9 +756,20 @@
           </div>
 
           <div class="imw-card">
-            <div class="flex items-center justify-between mb-2">
+            <div class="flex items-center justify-between mb-2 flex-wrap gap-2">
               <div class="text-xs text-slate-500 dark:text-slate-400">📂 최근 업로드 보고서</div>
-              <a href="#reports" class="text-[11px] text-navy-500 hover:underline">보고서 관리 →</a>
+              <div class="flex items-center gap-2">
+                <button id="homeUploadBtn" type="button"
+                        class="text-[11px] px-2 py-1 rounded-md bg-navy-900 text-white hover:bg-navy-800 font-semibold">
+                  📁 파일 업로드
+                </button>
+                <a href="#reports" class="text-[11px] text-navy-500 hover:underline">보고서 관리 →</a>
+              </div>
+            </div>
+            <!-- 홈에서 직접 드래그앤드롭 -->
+            <div id="homeDropZone"
+                 class="border-2 border-dashed border-slate-300 dark:border-navy-800 hover:border-navy-500 rounded-md py-3 px-2 text-center cursor-pointer text-[11px] text-slate-500 mb-2 transition">
+              파일을 여기에 끌어다 놓거나 위 <b>파일 업로드</b> 버튼 클릭
             </div>
             <ul id="homeRecentReports" class="space-y-2 text-sm"></ul>
           </div>
@@ -2974,8 +2985,59 @@
       // 홈 — 회사명·임원 인라인 편집
       bindHomeIdentityEdit();
 
+      // 홈 — 직접 파일 업로드 (버튼 + 드래그앤드롭)
+      bindHomeUpload();
+
       // 알림 (권한 있을 때만 비차단 호출)
       setTimeout(checkNotifications, 1500);
+    }
+
+    // ===================== 홈 — 파일 업로드 (버튼 + 드래그앤드롭) =====================
+    function bindHomeUpload() {
+      const btn = $('#homeUploadBtn');
+      const dz  = $('#homeDropZone');
+
+      // 숨겨진 input 재사용 (보고서 메뉴의 #fileInput) 또는 임시 생성
+      function pickFiles() {
+        let inp = $('#fileInput');
+        if (!inp) {
+          // fileInput이 아직 DOM에 없으면 임시 생성
+          inp = document.createElement('input');
+          inp.type = 'file';
+          inp.multiple = true;
+          inp.accept = '.pdf,.xls,.xlsx,.csv,.png,.jpg,.jpeg,.mp3,.m4a,.wav,.docx,.txt';
+          inp.style.display = 'none';
+          document.body.appendChild(inp);
+          inp.addEventListener('change', e => {
+            if (e.target.files && e.target.files.length > 0) handleFiles(e.target.files);
+            inp.value = '';
+          });
+        }
+        inp.click();
+      }
+
+      if (btn) btn.addEventListener('click', pickFiles);
+
+      if (dz) {
+        dz.addEventListener('click', pickFiles);
+        dz.addEventListener('dragover', e => {
+          e.preventDefault();
+          dz.classList.add('border-navy-500');
+          dz.classList.remove('border-slate-300');
+        });
+        dz.addEventListener('dragleave', () => {
+          dz.classList.remove('border-navy-500');
+          dz.classList.add('border-slate-300');
+        });
+        dz.addEventListener('drop', e => {
+          e.preventDefault();
+          dz.classList.remove('border-navy-500');
+          dz.classList.add('border-slate-300');
+          if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+            handleFiles(e.dataTransfer.files);
+          }
+        });
+      }
     }
 
     // ===================== 홈 — 회사·임원 인라인 편집 =====================
