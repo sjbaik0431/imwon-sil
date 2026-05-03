@@ -37,6 +37,14 @@
   <!-- Chart.js CDN -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
+  <!-- PDF.js CDN — PDF 본문 자동 추출용 -->
+  <script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js"></script>
+  <script>
+    if (typeof pdfjsLib !== 'undefined') {
+      pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js';
+    }
+  </script>
+
   <style>
     /* 전체 글자 크기 25% 확대 — 1rem = 20px (기본 16px + 25%) */
     html { font-size: 125%; }
@@ -498,25 +506,25 @@
 </head>
 <body class="font-pretendard antialiased">
 
-  <!-- ============== 환영 모달 (Open 데모 안내) ============== -->
+  <!-- ============== 환영 모달 ============== -->
   <div id="welcomeModal" class="modal-backdrop">
     <div class="imw-card w-full max-w-lg mx-4">
       <h2 class="text-xl font-bold text-navy-900 dark:text-navy-50 mb-2">임원실에 오신 것을 환영합니다</h2>
       <p class="text-sm text-slate-600 dark:text-slate-300 mb-3 leading-relaxed">
-        한국 중소기업 CEO·임원을 위한 경영 종합 대시보드 — 가상 회사 <b>"한울정공(주)"</b>의 12개월치 데모 데이터로 12개 메뉴 전부를 자유롭게 둘러보실 수 있습니다.
+        한국 중소기업 CEO·임원을 위한 <b>경영 종합 대시보드</b>입니다. 12개 메뉴(홈·보고서·시각화·재무·영업·인사·일정·KPI·시장·뉴스·입찰·명함)를 한 화면에서 운영합니다.
       </p>
       <div class="bg-navy-50 dark:bg-navy-900/40 border border-navy-500/20 rounded-md p-3 text-xs text-slate-700 dark:text-slate-300 leading-relaxed mb-3">
-        <div class="font-semibold text-navy-900 dark:text-navy-50 mb-1">Open 데모 — 라이센스 키 불필요</div>
-        본 페이지는 누구나 어디서나 자유롭게 접근하실 수 있는 공개 데모입니다. 입력하시는 메모·KPI·명함은 본인의 브라우저에만 저장되며 외부로 전송되지 않습니다. <b>실서비스 도입·계약 문의</b>는 <a href="mailto:bsj0431@gmail.com" class="underline">bsj0431@gmail.com</a> 또는 다풀림행정사 사무소로 연락 주십시오.
+        <div class="font-semibold text-navy-900 dark:text-navy-50 mb-1">시작 방법</div>
+        대시보드는 <b>빈 상태</b>로 시작합니다. 홈 우측 상단 <b>"✏️ 회사·임원 정보 편집"</b> 버튼으로 회사명·대표·임원을 입력하시고, <b>"📁 파일 선택"</b>으로 보고서를 업로드하시면 본문이 자동 추출되어 대시보드에 반영됩니다. 입력값에 해당하는 데이터가 없는 메뉴는 공란으로 유지됩니다.
       </div>
       <div class="grid grid-cols-3 gap-2 text-[11px] text-slate-600 dark:text-slate-300 mb-4">
         <div class="border border-slate-200 dark:border-navy-800 rounded-md p-2 text-center">
           <div class="text-base mb-0.5">🎤</div>
-          <div>음성 입력·출력은 <b>Chrome/Edge</b> 권장</div>
+          <div>음성 입출력은 <b>Chrome/Edge</b> 권장</div>
         </div>
         <div class="border border-slate-200 dark:border-navy-800 rounded-md p-2 text-center">
-          <div class="text-base mb-0.5">📊</div>
-          <div>모든 데이터는 <b>예시</b>입니다</div>
+          <div class="text-base mb-0.5">📁</div>
+          <div>PDF·엑셀·녹음 등 <b>다중 업로드</b></div>
         </div>
         <div class="border border-slate-200 dark:border-navy-800 rounded-md p-2 text-center">
           <div class="text-base mb-0.5">🔒</div>
@@ -2321,6 +2329,27 @@
       }
     }
 
+    // PDF 본문 추출 (PDF.js 필요, 미로드 시 빈 문자열 반환)
+    async function extractPdfText(file) {
+      if (typeof pdfjsLib === 'undefined') return '';
+      try {
+        const buf = await file.arrayBuffer();
+        const pdf = await pdfjsLib.getDocument({ data: buf }).promise;
+        const maxPages = Math.min(pdf.numPages, 20); // 20페이지 한도
+        let text = '';
+        for (let i = 1; i <= maxPages; i++) {
+          const page = await pdf.getPage(i);
+          const content = await page.getTextContent();
+          text += content.items.map(it => it.str).join(' ') + '\n';
+          if (text.length > 8000) break;
+        }
+        return text;
+      } catch (e) {
+        console.error('PDF 본문 추출 실패:', e);
+        return '';
+      }
+    }
+
     function handleFiles(fileList) {
       const files = Array.from(fileList || []);
       if (files.length === 0) return;
@@ -2331,7 +2360,7 @@
         saveReports(arr.slice(0, 200));
         _reportFilter = 'active';
         renderReportFileList();
-        // 홈 화면에도 즉시 반영 (홈이 활성 탭이라면 다시 그리기)
+        // 홈 화면에도 즉시 반영
         if ((location.hash || '#home').replace('#', '') === 'home') {
           try { renderHome(); } catch (e) {}
         }
@@ -2345,14 +2374,24 @@
           archivedAt: null
         };
 
-        // 텍스트 형식 파일은 본문도 함께 저장 (홈 미리보기용, 1MB 제한)
         const lower = (f.name || '').toLowerCase();
         const isText = /\.(txt|md|csv|json|log)$/.test(lower) || (f.type || '').startsWith('text/');
-        if (isText && f.size > 0 && f.size < 1024 * 1024) {
+        const isPdf  = /\.pdf$/.test(lower) || (f.type || '') === 'application/pdf';
+
+        if (isPdf && f.size > 0 && f.size < 5 * 1024 * 1024) {
+          // PDF — 본문 텍스트 자동 추출 (5MB 한도)
+          extractPdfText(f).then(text => {
+            if (text) entry.content = text.slice(0, 5000);
+          }).catch(() => {}).finally(() => {
+            arr.unshift(entry);
+            if (--pending === 0) finalize();
+          });
+        } else if (isText && f.size > 0 && f.size < 1024 * 1024) {
+          // 텍스트 파일 — 본문 직접 읽기 (1MB 한도)
           const reader = new FileReader();
           reader.onload = ev => {
             try {
-              const text = String(ev.target.result || '').slice(0, 5000); // 5,000자 한도
+              const text = String(ev.target.result || '').slice(0, 5000);
               entry.content = text;
             } catch (e) {}
             arr.unshift(entry);
@@ -3149,8 +3188,8 @@
           const ce = $('#inlineCeoName');
           if (cn) localStorage.setItem(LS.COMPANY_NAME, (cn.value || '').trim());
           if (ce) localStorage.setItem(LS.CEO_NAME,     (ce.value || '').trim());
-          // 새 회사명을 입력하면 "완전 비우기" 플래그 해제
-          if (cn && cn.value.trim()) localStorage.removeItem((LS_PREFIX + 'demoCleared'));
+          // 데모 부활 차단 — 회사명 입력해도 demoCleared 플래그 유지
+          // (사용자가 명시적으로 ⚙ '내 입력만 초기화'를 누를 때만 데모 복원)
 
           // 임원 오버라이드 수집
           const inputs = $$('.inline-exec-input');
