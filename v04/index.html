@@ -2493,31 +2493,54 @@
           card.appendChild(row);
         });
 
-        // AI 요약 (있으면)
-        if (f.summary) {
+        // AI 요약 — 저장된 것 우선, 없으면 즉석에서 autoSummary 생성·저장
+        let summaryText = f.summary || '';
+        if (!summaryText && f.content && typeof autoSummary === 'function') {
+          summaryText = autoSummary(f, f.content);
+          // LocalStorage에 저장 (다음 통합 보고서 생성 시 재사용)
+          try {
+            const reps = loadReports();
+            const j = reps.findIndex(r => r && r.name === f.name && r.uploadedAt === f.uploadedAt);
+            if (j >= 0) {
+              reps[j].summary = summaryText;
+              saveReports(reps);
+            }
+          } catch (e) {}
+        }
+
+        if (summaryText) {
           const sumWrap = document.createElement('div');
           sumWrap.style.marginTop = '0.625rem';
           sumWrap.style.paddingTop = '0.625rem';
           sumWrap.style.borderTop = '1px dashed #CBD5E1';
           const sh = document.createElement('div');
-          sh.style.fontWeight = '600';
+          sh.style.fontWeight = '700';
           sh.style.fontSize = '0.8125rem';
-          sh.style.marginBottom = '0.25rem';
-          sh.textContent = 'AI 요약';
+          sh.style.marginBottom = '0.375rem';
+          sh.style.color = '#0B2545';
+          sh.textContent = '✨ AI 요약';
           sumWrap.appendChild(sh);
-          const sp = document.createElement('div');
+          const sp = document.createElement('pre');
           sp.style.fontSize = '0.8125rem';
           sp.style.lineHeight = '1.6';
           sp.style.whiteSpace = 'pre-wrap';
-          sp.textContent = f.summary;
+          sp.style.fontFamily = 'inherit';
+          sp.style.margin = '0';
+          sp.textContent = summaryText;
           sumWrap.appendChild(sp);
           card.appendChild(sumWrap);
         } else {
           const note = document.createElement('div');
           note.style.marginTop = '0.5rem';
+          note.style.padding = '0.625rem 0.75rem';
+          note.style.background = '#FEF3C7';
+          note.style.borderRadius = '6px';
           note.style.fontSize = '0.75rem';
-          note.style.color = '#94A3B8';
-          note.textContent = 'ⓘ AI 요약 미생성. 보고서 메뉴에서 이 파일을 클릭하시면 1줄 결론 + 3줄 핵심 + 3대 액션이 자동으로 생성·저장됩니다.';
+          note.style.color = '#78350F';
+          note.style.lineHeight = '1.5';
+          note.textContent = 'ⓘ 본문 추출 불가 — 이 파일은 이미지·녹음·엑셀·이미지 PDF 등 본문 자동 추출이 지원되지 않는 형식입니다. ' +
+            '텍스트(.txt/.md/.csv) 또는 본문 PDF로 업로드하시면 1줄 결론 + 3줄 핵심 + 3대 액션이 자동 생성됩니다. ' +
+            '또는 ⚙ 설정에서 OpenAI/Claude API 키를 등록하시면 LLM이 직접 분석합니다.';
           card.appendChild(note);
         }
 
