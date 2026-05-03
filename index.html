@@ -608,17 +608,31 @@
           </button>
         </div>
 
-        <div class="border-t border-slate-200 dark:border-slate-700 pt-4">
-          <div class="flex items-center justify-between mb-1">
-            <span class="text-sm font-semibold text-signal-red">⚠ 전체 데이터 초기화</span>
+        <div class="border-t border-slate-200 dark:border-slate-700 pt-4 space-y-3">
+          <div class="flex items-center justify-between gap-2">
+            <div class="min-w-0">
+              <div class="text-sm font-semibold text-navy-900 dark:text-navy-50">내 입력 초기화</div>
+              <p class="text-[11px] text-slate-500 leading-relaxed">
+                본인이 입력한 <b>회사명·임원·KPI·메모·명함·관심 입찰·보고서·라이센스</b>를 삭제하고 <b>데모 회사(한울정공)로 복원</b>합니다.
+              </p>
+            </div>
             <button id="resetAllBtn"
-                    class="px-3 py-1.5 text-xs rounded-md bg-signal-red text-white hover:bg-red-700 font-semibold">
-              전체 초기화
+                    class="px-3 py-1.5 text-xs rounded-md border border-slate-300 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-navy-800 shrink-0">
+              내 입력만 초기화
             </button>
           </div>
-          <p class="text-[11px] text-slate-500 leading-relaxed">
-            본 브라우저에 저장된 <b>임원실 관련 모든 데이터</b>(회사명·임원·KPI 등록·메모·명함·관심 입찰·라이센스·테마·AI 키)를 즉시 삭제합니다. 되돌릴 수 없습니다.
-          </p>
+          <div class="flex items-center justify-between gap-2 bg-red-50 dark:bg-red-900/20 border border-signal-red/30 rounded-md p-3">
+            <div class="min-w-0">
+              <div class="text-sm font-semibold text-signal-red">⚠ 완전 비우기 (데모 회사 정보까지)</div>
+              <p class="text-[11px] text-slate-600 dark:text-slate-300 leading-relaxed">
+                위 + <b>데모 회사 한울정공·김임원·임원 6명</b>까지 모두 빈 상태로 만듭니다. 회사명을 새로 입력하기 전까지 헤더는 "(회사명 미설정)" 상태가 됩니다.
+              </p>
+            </div>
+            <button id="resetEverythingBtn"
+                    class="px-3 py-1.5 text-xs rounded-md bg-signal-red text-white hover:bg-red-700 font-semibold shrink-0">
+              완전 비우기
+            </button>
+          </div>
         </div>
       </div>
 
@@ -739,6 +753,14 @@
           <div class="imw-card">
             <div class="text-xs text-slate-500 dark:text-slate-400 mb-2">주요 KPI 신호등</div>
             <ul id="homeSignalList" class="space-y-2 text-sm"></ul>
+          </div>
+
+          <div class="imw-card">
+            <div class="flex items-center justify-between mb-2">
+              <div class="text-xs text-slate-500 dark:text-slate-400">📂 최근 업로드 보고서</div>
+              <a href="#reports" class="text-[11px] text-navy-500 hover:underline">보고서 관리 →</a>
+            </div>
+            <ul id="homeRecentReports" class="space-y-2 text-sm"></ul>
           </div>
         </div>
 
@@ -1073,9 +1095,14 @@
   </footer>
 
   <!-- ============== 빌더 B 모듈 (있으면 로드) ============== -->
-  <!-- v는 캐시 우회용 — modules.js/data.js 갱신 시 숫자 증가 -->
-  <script src="assets/data.js?v=3" onerror="console.warn('data.js 미존재 — 더미 데이터 사용')"></script>
-  <script src="assets/modules.js?v=3" onerror="console.warn('modules.js 미존재 — placeholder 사용')"></script>
+  <!-- 캐시 우회 — 매 리로드마다 새 query로 강제 갱신 -->
+  <script>
+    (function () {
+      const v = '5-' + Math.floor(Date.now() / 60000); // 분 단위 자동 갱신
+      document.write('<script src="assets/data.js?v=' + v + '" onerror="console.warn(\'data.js 미존재\')"><\/script>');
+      document.write('<script src="assets/modules.js?v=' + v + '" onerror="console.warn(\'modules.js 미존재\')"><\/script>');
+    })();
+  </script>
 
   <!-- ============== 메인 앱 스크립트 ============== -->
   <script>
@@ -1224,15 +1251,26 @@
       // 오버라이드를 in-place로 적용해야 KPI·인사 메뉴까지 일관 반영됩니다.
       if (!window.IMWON_DEMO || !_ORIGINAL_DEMO) return;
 
+      // "완전 비우기" 모드 — 데모 회사·임원 정보도 빈 상태로 표시
+      const fullyCleared = localStorage.getItem('imwon.demoCleared') === '1';
+
       const companyOverride = (localStorage.getItem(LS.COMPANY_NAME) || '').trim();
       const ceoOverride     = (localStorage.getItem(LS.CEO_NAME)     || '').trim();
       let execsOverride = [];
       try { execsOverride = JSON.parse(localStorage.getItem(LS.EXECUTIVES) || '[]'); } catch (e) { execsOverride = []; }
 
-      // 회사명·대표 호칭 — 비우면 원본으로 복원
+      // 회사명·대표 호칭
       if (window.IMWON_DEMO.company && _ORIGINAL_DEMO.company) {
-        window.IMWON_DEMO.company.name = companyOverride || _ORIGINAL_DEMO.company.name;
-        window.IMWON_DEMO.company.ceo  = ceoOverride     || _ORIGINAL_DEMO.company.ceo;
+        if (companyOverride) {
+          window.IMWON_DEMO.company.name = companyOverride;
+        } else {
+          window.IMWON_DEMO.company.name = fullyCleared ? '(회사명 미설정)' : _ORIGINAL_DEMO.company.name;
+        }
+        if (ceoOverride) {
+          window.IMWON_DEMO.company.ceo = ceoOverride;
+        } else {
+          window.IMWON_DEMO.company.ceo = fullyCleared ? '(대표 미설정)' : _ORIGINAL_DEMO.company.ceo;
+        }
       }
 
       // 임원 — 원본을 베이스로 오버라이드 다시 적용
@@ -1244,9 +1282,12 @@
         window.IMWON_DEMO.kpi.individuals = _ORIGINAL_DEMO.kpi.individuals.map((ind, idx) => {
           const cloned = JSON.parse(JSON.stringify(ind));
           const o = overrideByIdx[idx];
-          if (o) {
+          if (o && (o.name || o.dept)) {
             if (o.name && o.name.trim()) cloned.name = o.name.trim();
             if (o.dept && o.dept.trim()) cloned.dept = o.dept.trim();
+          } else if (fullyCleared) {
+            cloned.name = '(임원 ' + (idx + 1) + ' 미설정)';
+            cloned.dept = '미설정';
           }
           return cloned;
         });
@@ -1636,23 +1677,84 @@
       const briefs = buildMorningBrief(D);
       briefs.forEach(b => briefBox.appendChild(el('li', null, b)));
 
-      // 시장 위젯
+      // 시장 위젯 — 빌더 B의 객체 배열 구조({indices:[{name,current,change}], forex:[{pair,current,change}], commodities:[{name,current,unit,change}]})와
+      // 평탄 키({kospi,usdkrw,oil,gold}) 양쪽 모두 지원
       const mkt = $('#homeMarketWidget');
       clearChildren(mkt);
       const m = D.market || {};
+      function findItem(arr, keys) {
+        if (!Array.isArray(arr)) return null;
+        for (const k of keys) {
+          const found = arr.find(x => {
+            const id = ((x && (x.name || x.pair)) || '').toString();
+            return id.indexOf(k) !== -1;
+          });
+          if (found) return found;
+        }
+        return null;
+      }
+      function fmtChange(it) {
+        if (!it || typeof it.change !== 'number') return '';
+        const arrow = it.change >= 0 ? '▲' : '▼';
+        return arrow + ' ' + Math.abs(it.change).toFixed(2) + '%';
+      }
+      function valOrNum(it, plainKey) {
+        if (it && typeof it.current === 'number') return fmtNum(it.current);
+        if (m[plainKey] !== undefined) return fmtNum(m[plainKey]);
+        return '―';
+      }
+      const kospi  = findItem(m.indices, ['KOSPI']);
+      const usdkrw = findItem(m.forex,   ['USD/KRW', 'USD']);
+      const oil    = findItem(m.commodities, ['WTI', '원유']);
+      const gold   = findItem(m.commodities, ['금', 'Gold']);
       const cells = [
-        { label: 'KOSPI',  value: fmtNum(m.kospi),     delta: m.kospiDelta },
-        { label: '환율(USD)', value: fmtNum(m.usdkrw), delta: m.usdkrwDelta },
-        { label: '유가',    value: m.oil    || '―',    delta: m.oilDelta    || '' },
-        { label: '금',      value: m.gold   || '―',    delta: m.goldDelta   || '' }
+        { label: 'KOSPI',     value: valOrNum(kospi, 'kospi'),    delta: fmtChange(kospi)  || m.kospiDelta  || '' },
+        { label: '환율(USD)', value: valOrNum(usdkrw,'usdkrw'),   delta: fmtChange(usdkrw) || m.usdkrwDelta || '' },
+        { label: '유가',      value: valOrNum(oil,   'oil'),      delta: fmtChange(oil)    || m.oilDelta    || '' },
+        { label: '금',        value: valOrNum(gold,  'gold'),     delta: fmtChange(gold)   || m.goldDelta   || '' }
       ];
       cells.forEach(c => {
         mkt.appendChild(el('div', { class: 'p-2 rounded bg-slate-50 dark:bg-navy-800/50' }, [
           el('div', { class: 'text-[10px] text-slate-500' }, c.label),
           el('div', { class: 'font-bold text-navy-900 dark:text-navy-50' }, c.value),
-          el('div', { class: 'text-[10px] text-slate-500' }, c.delta || '')
+          el('div', { class: 'text-[10px] ' + (c.delta && c.delta.indexOf('▲') === 0 ? 'text-signal-red' : (c.delta && c.delta.indexOf('▼') === 0 ? 'text-blue-600' : 'text-slate-500')) }, c.delta || '')
         ]));
       });
+
+      // 최근 업로드 보고서 (활성 상태, 최신 5건)
+      const recentBox = $('#homeRecentReports');
+      if (recentBox) {
+        clearChildren(recentBox);
+        let recents = [];
+        try { recents = JSON.parse(localStorage.getItem(LS.REPORTS) || '[]'); } catch (e) {}
+        const active = (recents || []).filter(f => (f.status || 'active') === 'active').slice(0, 5);
+        if (active.length === 0) {
+          recentBox.appendChild(el('li', { class: 'text-slate-400 text-xs' },
+            '업로드된 보고서가 없습니다. 보고서 메뉴에서 파일을 업로드하면 여기에 표시됩니다.'));
+        } else {
+          active.forEach(f => {
+            const li = el('li', { class: 'flex items-start gap-2' });
+            li.appendChild(el('span', { class: 'shrink-0' }, fileIcon(f.name)));
+            const body = el('div', { class: 'min-w-0 flex-1' });
+            const title = el('a', {
+              href: '#reports',
+              class: 'block truncate text-navy-900 dark:text-navy-50 hover:text-navy-500 cursor-pointer'
+            }, f.name);
+            body.appendChild(title);
+            const meta = el('div', { class: 'text-[11px] text-slate-500' },
+              (f.uploadedAt || '') + ' · ' + formatBytes(f.size));
+            body.appendChild(meta);
+            // 본문 미리보기 (있으면)
+            if (f.content) {
+              const preview = el('div', { class: 'text-[11px] text-slate-600 dark:text-slate-300 mt-0.5 line-clamp-2' },
+                String(f.content).slice(0, 120) + (String(f.content).length > 120 ? '...' : ''));
+              body.appendChild(preview);
+            }
+            li.appendChild(body);
+            recentBox.appendChild(li);
+          });
+        }
+      }
 
       // 헤드라인 뉴스
       const newsBox = $('#homeNewsList');
@@ -2083,21 +2185,52 @@
     }
 
     function handleFiles(fileList) {
+      const files = Array.from(fileList || []);
+      if (files.length === 0) return;
       const arr = loadReports();
-      let added = 0;
-      Array.from(fileList || []).forEach(f => {
-        arr.unshift({
+      let pending = files.length;
+
+      function finalize() {
+        saveReports(arr.slice(0, 200));
+        _reportFilter = 'active';
+        renderReportFileList();
+        // 홈 화면에도 즉시 반영 (홈이 활성 탭이라면 다시 그리기)
+        if ((location.hash || '#home').replace('#', '') === 'home') {
+          try { renderHome(); } catch (e) {}
+        }
+      }
+
+      files.forEach(f => {
+        const entry = {
           name: f.name, size: f.size, type: f.type,
           uploadedAt: new Date().toLocaleString('ko-KR'),
           status: 'active',
           archivedAt: null
-        });
-        added++;
+        };
+
+        // 텍스트 형식 파일은 본문도 함께 저장 (홈 미리보기용, 1MB 제한)
+        const lower = (f.name || '').toLowerCase();
+        const isText = /\.(txt|md|csv|json|log)$/.test(lower) || (f.type || '').startsWith('text/');
+        if (isText && f.size > 0 && f.size < 1024 * 1024) {
+          const reader = new FileReader();
+          reader.onload = ev => {
+            try {
+              const text = String(ev.target.result || '').slice(0, 5000); // 5,000자 한도
+              entry.content = text;
+            } catch (e) {}
+            arr.unshift(entry);
+            if (--pending === 0) finalize();
+          };
+          reader.onerror = () => {
+            arr.unshift(entry);
+            if (--pending === 0) finalize();
+          };
+          reader.readAsText(f, 'utf-8');
+        } else {
+          arr.unshift(entry);
+          if (--pending === 0) finalize();
+        }
       });
-      saveReports(arr.slice(0, 200)); // 최대 200건 (활성+아카이브 합산)
-      // 신규 업로드 시 활성 탭으로 자동 전환
-      if (added > 0) _reportFilter = 'active';
-      renderReportFileList();
     }
 
     function summarizeReport(file) {
@@ -2670,17 +2803,34 @@
         location.reload();
       });
       $('#resetAllBtn').addEventListener('click', () => {
-        if (!confirm('본 브라우저에 저장된 임원실 관련 모든 데이터(회사명·임원·KPI·메모·명함·관심 입찰·라이센스·테마·AI 키)를 즉시 삭제하시겠습니까?\n\n되돌릴 수 없습니다.')) return;
-        // imwon.* 키만 안전하게 삭제
+        if (!confirm('본인이 입력한 회사명·임원·KPI·메모·명함·관심 입찰·보고서·라이센스 등을 모두 삭제하고 데모 회사(한울정공)로 복원합니다. 계속하시겠습니까?\n\n(되돌릴 수 없습니다)')) return;
+        // imwon.* 키 삭제 — demoCleared 플래그도 함께 삭제 → 데모 회사 복원
         const keys = [];
         for (let i = 0; i < localStorage.length; i++) {
           const k = localStorage.key(i);
           if (k && k.indexOf('imwon.') === 0) keys.push(k);
         }
         keys.forEach(k => localStorage.removeItem(k));
-        alert('총 ' + keys.length + '개 항목이 삭제되었습니다. 페이지를 새로고침합니다.');
+        alert('내 입력 ' + keys.length + '개 항목이 삭제되었습니다. 데모 회사로 복원됩니다.');
         location.reload();
       });
+
+      const resetEverything = $('#resetEverythingBtn');
+      if (resetEverything) {
+        resetEverything.addEventListener('click', () => {
+          if (!confirm('본인이 입력한 데이터 + 데모 회사(한울정공·김임원·임원 6명) 정보까지 모두 빈 상태로 만듭니다.\n\n헤더는 "(회사명 미설정)"으로 표시되며, 회사명을 새로 입력해야 정상 표시됩니다.\n\n계속하시겠습니까?')) return;
+          // imwon.* 키 모두 삭제 후 demoCleared 플래그만 다시 설정
+          const keys = [];
+          for (let i = 0; i < localStorage.length; i++) {
+            const k = localStorage.key(i);
+            if (k && k.indexOf('imwon.') === 0) keys.push(k);
+          }
+          keys.forEach(k => localStorage.removeItem(k));
+          localStorage.setItem('imwon.demoCleared', '1');
+          alert('완전 비우기 완료. 회사명을 새로 입력해 주세요.');
+          location.reload();
+        });
+      }
     }
 
     // ===================== 부팅 =====================
@@ -2806,6 +2956,8 @@
           const ce = $('#inlineCeoName');
           if (cn) localStorage.setItem(LS.COMPANY_NAME, (cn.value || '').trim());
           if (ce) localStorage.setItem(LS.CEO_NAME,     (ce.value || '').trim());
+          // 새 회사명을 입력하면 "완전 비우기" 플래그 해제
+          if (cn && cn.value.trim()) localStorage.removeItem('imwon.demoCleared');
 
           // 임원 오버라이드 수집
           const inputs = $$('.inline-exec-input');
