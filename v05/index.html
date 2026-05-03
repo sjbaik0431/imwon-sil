@@ -2223,7 +2223,7 @@
         ]));
       });
 
-      // 🤖 보고서 자동 추출 데이터 카드
+      // 🤖 보고서 자동 추출 데이터 — 카테고리별 그룹화 카드
       const extBox = $('#homeExtractedList');
       const extSrcCount = $('#homeExtractedSourceCount');
       const extSrcs = $('#homeExtractedSources');
@@ -2231,53 +2231,109 @@
         clearChildren(extBox);
         if (extSrcs) clearChildren(extSrcs);
         const extracted = window.__IMWON_EXTRACTED__;
-        if (!extracted || (!extracted.sources || extracted.sources.length === 0)) {
+        if (!extracted || !extracted.sources || extracted.sources.length === 0) {
           extBox.appendChild(el('li', { class: 'text-slate-400 text-xs' },
-            '업로드한 보고서에서 자동 추출된 데이터가 없습니다. 텍스트·PDF 파일을 업로드하시면 매출·현금·이직률 등 핵심 숫자를 자동 분석합니다.'));
+            '업로드한 보고서에서 자동 추출된 데이터가 없습니다. 텍스트·PDF 파일을 업로드하시면 수주·생산·품질·재무·인사 등 핵심 숫자를 자동 분석합니다.'));
           if (extSrcCount) extSrcCount.textContent = '0건';
         } else {
           if (extSrcCount) extSrcCount.textContent = extracted.sources.length + '개 파일에서 추출';
+
+          // 카테고리별 그룹 빌더
+          function makeGroup(emoji, title, items) {
+            // items: [{label, value, hint?}]
+            const valid = (items || []).filter(it => it && it.value !== undefined && it.value !== null && it.value !== '');
+            if (valid.length === 0) return null;
+            const wrap = document.createElement('li');
+            wrap.style.cssText = 'list-style:none;padding:0.625rem 0.75rem;background:#F7F9FC;border-radius:8px;margin-bottom:0.5rem;';
+            wrap.classList.add('imwon-extract-group');
+            const h = document.createElement('div');
+            h.style.cssText = 'font-size:0.75rem;font-weight:700;color:#0B2545;margin-bottom:0.5rem;';
+            h.textContent = emoji + ' ' + title;
+            wrap.appendChild(h);
+            const grid = document.createElement('div');
+            grid.style.cssText = 'display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:0.4rem 0.625rem;';
+            valid.forEach(it => {
+              const cell = document.createElement('div');
+              const k = document.createElement('div');
+              k.style.cssText = 'font-size:0.625rem;color:#64748B;';
+              k.textContent = it.label;
+              const v = document.createElement('div');
+              v.style.cssText = 'font-size:0.95rem;font-weight:700;color:#0B2545;line-height:1.2;';
+              v.textContent = it.value;
+              cell.appendChild(k);
+              cell.appendChild(v);
+              grid.appendChild(cell);
+            });
+            wrap.appendChild(grid);
+            return wrap;
+          }
+
           // 재무
           const f = extracted.finance || {};
-          if (f.revenue !== undefined)            extBox.appendChild(el('li', null, '💰 매출 ' + fmtMoney(f.revenue)));
-          if (f.operatingProfit !== undefined)    extBox.appendChild(el('li', null, '📈 영업이익 ' + fmtMoney(f.operatingProfit)));
-          if (f.cashBalance !== undefined)        extBox.appendChild(el('li', null, '💵 현금잔고 ' + fmtMoney(f.cashBalance)));
-          if (f.accountsReceivable !== undefined) extBox.appendChild(el('li', null, '🧾 매출채권 ' + fmtMoney(f.accountsReceivable)));
-          if (f.creditLine !== undefined)         extBox.appendChild(el('li', null, '🏦 여신한도잔여 ' + fmtMoney(f.creditLine)));
-          if (f.operatingMargin !== undefined)    extBox.appendChild(el('li', null, '📊 영업이익률 ' + f.operatingMargin + '%'));
-          if (f.yieldRate !== undefined)          extBox.appendChild(el('li', null, '🏭 수율 ' + f.yieldRate + '%'));
+          const finItems = [
+            { label: '매출',         value: f.revenue !== undefined            ? fmtMoney(f.revenue)            : null },
+            { label: '영업이익',     value: f.operatingProfit !== undefined    ? fmtMoney(f.operatingProfit)    : null },
+            { label: '영업이익률',   value: f.operatingMargin !== undefined    ? f.operatingMargin + '%'        : null },
+            { label: '현금잔고',     value: f.cashBalance !== undefined        ? fmtMoney(f.cashBalance)        : null },
+            { label: '매출채권',     value: f.accountsReceivable !== undefined ? fmtMoney(f.accountsReceivable) : null },
+            { label: '여신한도잔여', value: f.creditLine !== undefined         ? fmtMoney(f.creditLine)         : null }
+          ];
+          const finCard = makeGroup('💰', '재무', finItems);
+          if (finCard) extBox.appendChild(finCard);
+
+          // 수주·영업
+          const s = extracted.sales || {};
+          const salesItems = [
+            { label: '일일 수주액',     value: s.dailyOrders !== undefined      ? fmtMoney(s.dailyOrders)      : null },
+            { label: '월 일평균',       value: s.monthlyAvgOrders !== undefined ? fmtMoney(s.monthlyAvgOrders) : null },
+            { label: '수주 누계',       value: s.cumulativeOrders !== undefined ? fmtMoney(s.cumulativeOrders) : null },
+            { label: '일본영업 수주',   value: s.japanOrders !== undefined      ? fmtMoney(s.japanOrders)      : null },
+            { label: '해외영업 수주',   value: s.overseasOrders !== undefined   ? fmtMoney(s.overseasOrders)   : null },
+            { label: '총 수주액',       value: s.totalOrders !== undefined      ? fmtMoney(s.totalOrders)      : null },
+            { label: '신규 수주',       value: s.newOrders !== undefined        ? s.newOrders + '건'           : null },
+            { label: '신규 계약',       value: s.contracts !== undefined        ? s.contracts + '건'           : null }
+          ];
+          const salesCard = makeGroup('📦', '수주·영업', salesItems);
+          if (salesCard) extBox.appendChild(salesCard);
+
+          // 생산·출하·품질
+          const pr = extracted.production || {};
+          const prodItems = [
+            { label: '필요 일수',     value: pr.requiredDays !== undefined       ? pr.requiredDays + '일'       : null },
+            { label: '가동률',        value: pr.utilizationRate !== undefined    ? pr.utilizationRate + '%'     : null },
+            { label: '납기준수율',    value: pr.onTimeDeliveryRate !== undefined ? pr.onTimeDeliveryRate + '%'  : null },
+            { label: '수율',          value: f.yieldRate !== undefined           ? f.yieldRate + '%'            : null },
+            { label: '불량률',        value: pr.defectRate !== undefined         ? pr.defectRate + '%'          : null },
+            { label: '재고일수',      value: pr.inventoryDays !== undefined      ? pr.inventoryDays + '일'      : null },
+            { label: '품질 이슈',     value: pr.qualityIssues !== undefined      ? pr.qualityIssues + '건'      : null }
+          ];
+          const prodCard = makeGroup('🏭', '생산·출하·품질', prodItems);
+          if (prodCard) extBox.appendChild(prodCard);
+
           // 인사
           const h = extracted.hr || {};
-          if (h.totalEmployees   !== undefined) extBox.appendChild(el('li', null, '👥 재직자수 ' + h.totalEmployees + '명'));
-          if (h.turnoverRate     !== undefined) extBox.appendChild(el('li', null, '🚪 이직률 ' + h.turnoverRate + '%'));
-          if (h.leaveUsage       !== undefined) extBox.appendChild(el('li', null, '🏖 연차소진율 ' + h.leaveUsage + '%'));
-          if (h.pendingApprovals !== undefined) extBox.appendChild(el('li', null, '✍ 결재 대기 ' + h.pendingApprovals + '건'));
-          // 영업·수주
-          const s = extracted.sales || {};
-          if (s.newOrders !== undefined)         extBox.appendChild(el('li', null, '📝 신규 수주 ' + s.newOrders + '건'));
-          if (s.contracts !== undefined)         extBox.appendChild(el('li', null, '📑 신규 계약 ' + s.contracts + '건'));
-          if (s.dailyOrders !== undefined)       extBox.appendChild(el('li', null, '📦 일일 수주액 ' + fmtMoney(s.dailyOrders)));
-          if (s.monthlyAvgOrders !== undefined)  extBox.appendChild(el('li', null, '📊 월 일평균 수주 ' + fmtMoney(s.monthlyAvgOrders)));
-          if (s.cumulativeOrders !== undefined)  extBox.appendChild(el('li', null, '📈 수주 누계 ' + fmtMoney(s.cumulativeOrders)));
-          if (s.japanOrders !== undefined)       extBox.appendChild(el('li', null, '🇯🇵 일본영업 수주액 ' + fmtMoney(s.japanOrders)));
-          if (s.overseasOrders !== undefined)    extBox.appendChild(el('li', null, '🌐 해외영업 수주액 ' + fmtMoney(s.overseasOrders)));
-          if (s.totalOrders !== undefined)       extBox.appendChild(el('li', null, '📋 총 수주액 ' + fmtMoney(s.totalOrders)));
-          // 생산
-          const pr = extracted.production || {};
-          if (pr.requiredDays !== undefined)        extBox.appendChild(el('li', null, '⏱ 필요 일수 ' + pr.requiredDays + '일'));
-          if (pr.utilizationRate !== undefined)     extBox.appendChild(el('li', null, '⚙ 가동률 ' + pr.utilizationRate + '%'));
-          if (pr.onTimeDeliveryRate !== undefined)  extBox.appendChild(el('li', null, '🚚 납기준수율 ' + pr.onTimeDeliveryRate + '%'));
-          if (pr.defectRate !== undefined)          extBox.appendChild(el('li', null, '⚠ 불량률 ' + pr.defectRate + '%'));
-          if (pr.inventoryDays !== undefined)       extBox.appendChild(el('li', null, '📦 재고일수 ' + pr.inventoryDays + '일'));
-          if (pr.qualityIssues !== undefined)       extBox.appendChild(el('li', null, '🔧 품질 이슈 ' + pr.qualityIssues + '건'));
+          const hrItems = [
+            { label: '재직자수',  value: h.totalEmployees !== undefined   ? h.totalEmployees + '명'   : null },
+            { label: '이직률',    value: h.turnoverRate !== undefined     ? h.turnoverRate + '%'      : null },
+            { label: '연차소진율',value: h.leaveUsage !== undefined       ? h.leaveUsage + '%'        : null },
+            { label: '결재 대기', value: h.pendingApprovals !== undefined ? h.pendingApprovals + '건' : null }
+          ];
+          const hrCard = makeGroup('👥', '인사', hrItems);
+          if (hrCard) extBox.appendChild(hrCard);
+
           // 일정
           if (extracted.schedule && extracted.schedule.length > 0) {
-            extBox.appendChild(el('li', null, '📅 일정 ' + extracted.schedule.length + '건 (자동 추출)'));
+            const schItems = [{ label: '추출된 일정', value: extracted.schedule.length + '건' }];
+            const schCard = makeGroup('📅', '일정', schItems);
+            if (schCard) extBox.appendChild(schCard);
           }
+
+          // 아무 카테고리도 없으면 안내
           if (extBox.children.length === 0) {
             extBox.appendChild(el('li', { class: 'text-slate-400 text-xs' },
-              '인식된 항목 없음. 본문에 "매출 23.5억", "이직률 8.4%", "결재 대기 14건" 같은 한국어 비즈니스 키워드가 포함되면 자동 추출됩니다.'));
+              '인식된 항목 없음. 본문에 "수주액 57백만원", "필요 일수 5.5일", "이직률 8.4%" 같은 한국어 키워드 + 숫자가 명확하면 자동 추출됩니다.'));
           }
+
           // 출처 목록
           if (extSrcs) {
             extracted.sources.forEach(src => {
