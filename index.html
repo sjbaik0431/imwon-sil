@@ -461,11 +461,33 @@
         </div>
 
         <div>
+          <label class="block text-sm font-semibold mb-1">회사명</label>
+          <input id="companyNameInput" type="text"
+                 class="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-900 text-sm"
+                 placeholder="한울정공(주)" />
+          <p class="text-[11px] text-slate-500 mt-1">홈 헤더·AI 브리핑·문서에 표시됩니다. 비우면 데모 회사명이 사용됩니다.</p>
+        </div>
+
+        <div>
           <label class="block text-sm font-semibold mb-1">대표 호칭</label>
           <input id="ceoNameInput" type="text"
                  class="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-900 text-sm"
                  placeholder="홍길동" />
+          <p class="text-[11px] text-slate-500 mt-1">홈 인사말("○○○님, 오늘도…")에 사용됩니다.</p>
         </div>
+
+        <details class="group border border-slate-200 dark:border-slate-700 rounded-md">
+          <summary class="cursor-pointer list-none px-3 py-2.5 text-sm font-semibold flex items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-800/40 rounded-md">
+            <span>임원 이름·부서 변경</span>
+            <span class="text-xs text-slate-500 group-open:rotate-90 inline-block transition-transform">▶</span>
+          </summary>
+          <div class="px-3 pb-3">
+            <div id="executivesList" class="space-y-2 mt-1"></div>
+            <p class="text-[11px] text-slate-500 mt-2 leading-relaxed">
+              KPI 관리 메뉴의 "개인" 탭과 일부 인사 표시에 반영됩니다. 비워 두면 데모 이름(김임원·최민수·한경태·이상철·박서연·정우진)이 사용됩니다.
+            </p>
+          </div>
+        </details>
 
         <div class="flex items-center justify-between">
           <span class="text-sm font-semibold">브라우저 알림</span>
@@ -476,10 +498,10 @@
         </div>
 
         <div class="flex items-center justify-between">
-          <span class="text-sm font-semibold">데모 데이터</span>
+          <span class="text-sm font-semibold">업로드한 보고서 목록</span>
           <button id="resetDemoBtn"
-                  class="px-3 py-1.5 text-xs rounded-md border border-signal-red text-signal-red hover:bg-red-50 dark:hover:bg-red-900/20">
-            리셋
+                  class="px-3 py-1.5 text-xs rounded-md border border-slate-300 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-800">
+            비우기
           </button>
         </div>
 
@@ -489,6 +511,19 @@
                   class="px-3 py-1.5 text-xs rounded-md border border-slate-300 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-800">
             제거
           </button>
+        </div>
+
+        <div class="border-t border-slate-200 dark:border-slate-700 pt-4">
+          <div class="flex items-center justify-between mb-1">
+            <span class="text-sm font-semibold text-signal-red">⚠ 전체 데이터 초기화</span>
+            <button id="resetAllBtn"
+                    class="px-3 py-1.5 text-xs rounded-md bg-signal-red text-white hover:bg-red-700 font-semibold">
+              전체 초기화
+            </button>
+          </div>
+          <p class="text-[11px] text-slate-500 leading-relaxed">
+            본 브라우저에 저장된 <b>임원실 관련 모든 데이터</b>(회사명·임원·KPI 등록·메모·명함·관심 입찰·라이센스·테마·AI 키)를 즉시 삭제합니다. 되돌릴 수 없습니다.
+          </p>
         </div>
       </div>
 
@@ -633,9 +668,18 @@
           </div>
 
           <div class="imw-card">
-            <div class="flex items-center justify-between mb-3">
+            <div class="flex items-center justify-between mb-3 flex-wrap gap-2">
               <div class="font-semibold text-navy-900 dark:text-navy-50">업로드된 파일</div>
-              <button id="clearFilesBtn" class="text-xs text-signal-red hover:underline">전체 삭제</button>
+              <div class="flex items-center gap-2">
+                <input id="reportSearch" type="search" placeholder="파일명 검색..."
+                       class="px-2 py-1 border border-slate-300 dark:border-slate-600 rounded text-xs bg-white dark:bg-slate-900 w-36" />
+                <button id="clearFilesBtn" class="text-xs text-signal-red hover:underline">전체 삭제</button>
+              </div>
+            </div>
+            <div id="reportFilterTabs" class="flex gap-1 mb-3 border-b border-slate-200 dark:border-navy-800 text-xs">
+              <button data-filter="active"   class="report-filter-btn active px-3 py-1.5 font-semibold border-b-2 border-navy-900 dark:border-navy-500 text-navy-900 dark:text-navy-50">활성 <span class="text-slate-500" data-count="active">(0)</span></button>
+              <button data-filter="archived" class="report-filter-btn px-3 py-1.5 text-slate-500 border-b-2 border-transparent hover:text-navy-900">아카이브 <span data-count="archived">(0)</span></button>
+              <button data-filter="all"      class="report-filter-btn px-3 py-1.5 text-slate-500 border-b-2 border-transparent hover:text-navy-900">전체 <span data-count="all">(0)</span></button>
             </div>
             <ul id="reportFileList" class="space-y-1 text-sm"></ul>
           </div>
@@ -877,12 +921,14 @@
     ];
 
     const LS = {
-      LICENSE:   'imwon.license',
-      THEME:     'imwon.theme',
-      AI_PROV:   'imwon.aiProvider',
-      AI_KEY:    'imwon.aiKey',
-      CEO_NAME:  'imwon.ceoName',
-      REPORTS:   'imwon.reports'
+      LICENSE:      'imwon.license',
+      THEME:        'imwon.theme',
+      AI_PROV:      'imwon.aiProvider',
+      AI_KEY:       'imwon.aiKey',
+      CEO_NAME:     'imwon.ceoName',
+      COMPANY_NAME: 'imwon.companyName',
+      EXECUTIVES:   'imwon.executives',
+      REPORTS:      'imwon.reports'
     };
 
     // 더미 데이터(빌더 B의 IMWON_DEMO 미존재 시 폴백)
@@ -989,7 +1035,48 @@
       ]
     };
 
+    // 원본 데모 데이터 보관 (사용자가 비워서 원복할 때 사용)
+    let _ORIGINAL_DEMO = null;
+    if (window.IMWON_DEMO) {
+      try { _ORIGINAL_DEMO = JSON.parse(JSON.stringify(window.IMWON_DEMO)); } catch (e) { _ORIGINAL_DEMO = null; }
+    }
+
+    function applyOverridesToDemo() {
+      // 빌더 B(modules.js)는 window.IMWON_DEMO를 직접 참조하므로
+      // 오버라이드를 in-place로 적용해야 KPI·인사 메뉴까지 일관 반영됩니다.
+      if (!window.IMWON_DEMO || !_ORIGINAL_DEMO) return;
+
+      const companyOverride = (localStorage.getItem(LS.COMPANY_NAME) || '').trim();
+      const ceoOverride     = (localStorage.getItem(LS.CEO_NAME)     || '').trim();
+      let execsOverride = [];
+      try { execsOverride = JSON.parse(localStorage.getItem(LS.EXECUTIVES) || '[]'); } catch (e) { execsOverride = []; }
+
+      // 회사명·대표 호칭 — 비우면 원본으로 복원
+      if (window.IMWON_DEMO.company && _ORIGINAL_DEMO.company) {
+        window.IMWON_DEMO.company.name = companyOverride || _ORIGINAL_DEMO.company.name;
+        window.IMWON_DEMO.company.ceo  = ceoOverride     || _ORIGINAL_DEMO.company.ceo;
+      }
+
+      // 임원 — 원본을 베이스로 오버라이드 다시 적용
+      if (window.IMWON_DEMO.kpi && _ORIGINAL_DEMO.kpi && Array.isArray(_ORIGINAL_DEMO.kpi.individuals)) {
+        const overrideByIdx = {};
+        if (Array.isArray(execsOverride)) {
+          execsOverride.forEach(o => { if (o && typeof o.idx === 'number') overrideByIdx[o.idx] = o; });
+        }
+        window.IMWON_DEMO.kpi.individuals = _ORIGINAL_DEMO.kpi.individuals.map((ind, idx) => {
+          const cloned = JSON.parse(JSON.stringify(ind));
+          const o = overrideByIdx[idx];
+          if (o) {
+            if (o.name && o.name.trim()) cloned.name = o.name.trim();
+            if (o.dept && o.dept.trim()) cloned.dept = o.dept.trim();
+          }
+          return cloned;
+        });
+      }
+    }
+
     function getDemo() {
+      applyOverridesToDemo();
       return (window.IMWON_DEMO && typeof window.IMWON_DEMO === 'object')
         ? Object.assign({}, FALLBACK_DEMO, window.IMWON_DEMO)
         : FALLBACK_DEMO;
@@ -1156,6 +1243,8 @@
 
     function renderTab(id) {
       try {
+        // 모든 탭 진입 시 사용자 오버라이드 적용 (회사명·대표·임원)
+        applyOverridesToDemo();
         switch (id) {
           case 'home':     renderHome();    break;
           case 'reports':  renderReports(); break;
@@ -1176,6 +1265,8 @@
     }
 
     function renderActiveTab() {
+      // 사용자 오버라이드(회사명·임원)가 빌더 B 모듈까지 반영되도록 매 진입 시 적용
+      applyOverridesToDemo();
       const id = (location.hash || '#home').replace('#', '');
       renderTab(id);
     }
@@ -1449,36 +1540,106 @@
       catch (e) { console.error(e); }
     }
 
+    let _reportFilter  = 'active';
+    let _reportSearchQ = '';
+
     function renderReportFileList() {
       const list = $('#reportFileList');
       if (!list) return;
       clearChildren(list);
-      const files = loadReports();
-      if (files.length === 0) {
-        list.appendChild(el('li', { class: 'text-slate-400 text-xs' }, '업로드된 파일이 없습니다.'));
+
+      const all = loadReports();
+      // 카운트 갱신
+      const counts = {
+        active:   all.filter(f => (f.status || 'active') === 'active').length,
+        archived: all.filter(f =>  f.status === 'archived').length,
+        all:      all.length
+      };
+      ['active', 'archived', 'all'].forEach(k => {
+        const span = document.querySelector('[data-count="' + k + '"]');
+        if (span) span.textContent = '(' + counts[k] + ')';
+      });
+
+      // 필터 + 검색
+      const visible = all
+        .map((f, idx) => ({ f: f, idx: idx }))
+        .filter(({ f }) => {
+          const status = f.status || 'active';
+          if (_reportFilter === 'active'   && status !== 'active')   return false;
+          if (_reportFilter === 'archived' && status !== 'archived') return false;
+          if (_reportSearchQ && !(f.name || '').toLowerCase().includes(_reportSearchQ)) return false;
+          return true;
+        });
+
+      if (visible.length === 0) {
+        const msg = _reportFilter === 'archived' ? '아카이브된 파일이 없습니다.'
+                  : _reportFilter === 'active'   ? '활성 파일이 없습니다. 위 영역에 파일을 드래그해 업로드하세요.'
+                  : '파일이 없습니다.';
+        list.appendChild(el('li', { class: 'text-slate-400 text-xs py-4 text-center' }, msg));
         return;
       }
-      files.forEach((f, idx) => {
-        const li = el('li', { class: 'flex items-center justify-between p-2 rounded hover:bg-slate-50 dark:hover:bg-navy-800/50 cursor-pointer' }, [
-          el('div', { class: 'flex items-center gap-2 min-w-0' }, [
-            el('span', null, fileIcon(f.name)),
-            el('div', { class: 'min-w-0' }, [
-              el('div', { class: 'truncate text-navy-900 dark:text-navy-50' }, f.name),
-              el('div', { class: 'text-[11px] text-slate-500' }, formatBytes(f.size) + ' · ' + (f.uploadedAt || ''))
-            ])
-          ]),
-          el('button', { class: 'text-xs text-signal-red shrink-0 ml-2', 'data-idx': String(idx) }, '삭제')
-        ]);
+
+      visible.forEach(({ f, idx }) => {
+        const archived = (f.status === 'archived');
+        const li = document.createElement('li');
+        li.className = 'flex items-center justify-between p-2 rounded hover:bg-slate-50 dark:hover:bg-navy-800/50 ' + (archived ? 'opacity-70' : '');
+
+        // 좌: 아이콘 + 이름·메타
+        const leftBtn = document.createElement('button');
+        leftBtn.type = 'button';
+        leftBtn.className = 'flex items-center gap-2 min-w-0 flex-1 text-left cursor-pointer bg-transparent border-0';
+        leftBtn.dataset.action = 'summarize';
+        const iconSpan = document.createElement('span'); iconSpan.textContent = fileIcon(f.name);
+        const nameWrap = document.createElement('div'); nameWrap.className = 'min-w-0';
+        const nameDiv  = document.createElement('div'); nameDiv.className = 'truncate text-navy-900 dark:text-navy-50'; nameDiv.textContent = f.name;
+        const metaDiv  = document.createElement('div'); metaDiv.className = 'text-[11px] text-slate-500';
+        metaDiv.textContent = formatBytes(f.size) + ' · ' + (f.uploadedAt || '') + (archived && f.archivedAt ? ' · 📦 ' + f.archivedAt : '');
+        nameWrap.appendChild(nameDiv); nameWrap.appendChild(metaDiv);
+        leftBtn.appendChild(iconSpan); leftBtn.appendChild(nameWrap);
+
+        // 우: 액션 버튼
+        const actions = document.createElement('div');
+        actions.className = 'flex items-center gap-1 shrink-0 ml-2';
+        const archBtn = document.createElement('button');
+        archBtn.type = 'button';
+        archBtn.className = 'text-[11px] px-2 py-1 rounded border border-slate-300 dark:border-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800';
+        archBtn.dataset.action = archived ? 'restore' : 'archive';
+        archBtn.textContent = archived ? '↺ 복원' : '📦 아카이브';
+        const delBtn = document.createElement('button');
+        delBtn.type = 'button';
+        delBtn.className = 'text-[11px] px-2 py-1 rounded text-signal-red hover:bg-red-50 dark:hover:bg-red-900/20';
+        delBtn.dataset.action = 'delete';
+        delBtn.textContent = '🗑';
+        actions.appendChild(archBtn);
+        actions.appendChild(delBtn);
+
+        li.appendChild(leftBtn);
+        li.appendChild(actions);
+
+        // 액션 핸들러 (이벤트 위임)
         li.addEventListener('click', e => {
-          if (e.target.tagName === 'BUTTON') {
-            e.stopPropagation();
-            const i = Number(e.target.getAttribute('data-idx'));
-            const arr = loadReports();
-            arr.splice(i, 1);
+          const tg = e.target.closest('[data-action]');
+          if (!tg) return;
+          const action = tg.dataset.action;
+          const arr = loadReports();
+          if (!arr[idx] && action !== 'summarize') return;
+          if (action === 'summarize') {
+            summarizeReport(f);
+          } else if (action === 'archive') {
+            arr[idx].status = 'archived';
+            arr[idx].archivedAt = new Date().toLocaleString('ko-KR');
             saveReports(arr);
             renderReportFileList();
-          } else {
-            summarizeReport(f);
+          } else if (action === 'restore') {
+            arr[idx].status = 'active';
+            delete arr[idx].archivedAt;
+            saveReports(arr);
+            renderReportFileList();
+          } else if (action === 'delete') {
+            if (!confirm('"' + f.name + '" 파일을 영구 삭제하시겠습니까?')) return;
+            arr.splice(idx, 1);
+            saveReports(arr);
+            renderReportFileList();
           }
         });
         list.appendChild(li);
@@ -1520,10 +1681,35 @@
       }
       if (clear) {
         clear.addEventListener('click', () => {
-          if (confirm('업로드된 파일 목록을 모두 삭제하시겠습니까?')) {
+          if (confirm('업로드된 파일 목록을 모두 삭제하시겠습니까? (아카이브 포함)')) {
             saveReports([]);
             renderReportFileList();
           }
+        });
+      }
+      // 필터 탭
+      $$('.report-filter-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          _reportFilter = btn.getAttribute('data-filter') || 'active';
+          $$('.report-filter-btn').forEach(b => {
+            const isActive = (b === btn);
+            if (isActive) {
+              b.classList.add('active', 'border-navy-900', 'dark:border-navy-500', 'text-navy-900', 'dark:text-navy-50', 'font-semibold');
+              b.classList.remove('border-transparent', 'text-slate-500');
+            } else {
+              b.classList.remove('active', 'border-navy-900', 'dark:border-navy-500', 'text-navy-900', 'dark:text-navy-50', 'font-semibold');
+              b.classList.add('border-transparent', 'text-slate-500');
+            }
+          });
+          renderReportFileList();
+        });
+      });
+      // 검색
+      const search = $('#reportSearch');
+      if (search) {
+        search.addEventListener('input', () => {
+          _reportSearchQ = (search.value || '').trim().toLowerCase();
+          renderReportFileList();
         });
       }
       // 음성 메모
@@ -1541,13 +1727,19 @@
 
     function handleFiles(fileList) {
       const arr = loadReports();
+      let added = 0;
       Array.from(fileList || []).forEach(f => {
         arr.unshift({
           name: f.name, size: f.size, type: f.type,
-          uploadedAt: new Date().toLocaleString('ko-KR')
+          uploadedAt: new Date().toLocaleString('ko-KR'),
+          status: 'active',
+          archivedAt: null
         });
+        added++;
       });
-      saveReports(arr.slice(0, 100));
+      saveReports(arr.slice(0, 200)); // 최대 200건 (활성+아카이브 합산)
+      // 신규 업로드 시 활성 탭으로 자동 전환
+      if (added > 0) _reportFilter = 'active';
       renderReportFileList();
     }
 
@@ -2027,18 +2219,80 @@
     }
 
     // ===================== 설정 모달 =====================
+    function buildExecutivesEditor() {
+      const container = $('#executivesList');
+      if (!container) return;
+      clearChildren(container);
+
+      // 데모 원본의 임원 6명을 기준으로 표시 (오버라이드 적용 전 원본)
+      const baseRaw = (window.IMWON_DEMO && typeof window.IMWON_DEMO === 'object')
+        ? Object.assign({}, FALLBACK_DEMO, window.IMWON_DEMO)
+        : FALLBACK_DEMO;
+      const execs = (baseRaw.kpi && Array.isArray(baseRaw.kpi.individuals)) ? baseRaw.kpi.individuals : [];
+
+      let overrides = [];
+      try { overrides = JSON.parse(localStorage.getItem(LS.EXECUTIVES) || '[]'); } catch (e) {}
+      const overrideByIdx = {};
+      overrides.forEach(o => { if (o && typeof o.idx === 'number') overrideByIdx[o.idx] = o; });
+
+      execs.forEach((ind, idx) => {
+        const overr = overrideByIdx[idx] || {};
+        const row = document.createElement('div');
+        row.className = 'grid grid-cols-2 gap-2';
+
+        const nameInput = document.createElement('input');
+        nameInput.type = 'text';
+        nameInput.placeholder = ind.name || '이름';
+        nameInput.value = overr.name || '';
+        nameInput.dataset.execIdx = String(idx);
+        nameInput.dataset.execField = 'name';
+        nameInput.className = 'imwon-exec-input px-2 py-1.5 border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-900 text-xs';
+
+        const deptInput = document.createElement('input');
+        deptInput.type = 'text';
+        deptInput.placeholder = ind.dept || '부서';
+        deptInput.value = overr.dept || '';
+        deptInput.dataset.execIdx = String(idx);
+        deptInput.dataset.execField = 'dept';
+        deptInput.className = 'imwon-exec-input px-2 py-1.5 border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-900 text-xs';
+
+        row.appendChild(nameInput);
+        row.appendChild(deptInput);
+        container.appendChild(row);
+      });
+    }
+
     function bindSettingsModal() {
       $('#settingsBtn').addEventListener('click', () => {
-        $('#aiProviderSelect').value = localStorage.getItem(LS.AI_PROV)  || 'openai';
-        $('#apiKeyInput').value      = localStorage.getItem(LS.AI_KEY)   || '';
-        $('#ceoNameInput').value     = localStorage.getItem(LS.CEO_NAME) || '';
+        $('#aiProviderSelect').value     = localStorage.getItem(LS.AI_PROV)      || 'openai';
+        $('#apiKeyInput').value          = localStorage.getItem(LS.AI_KEY)       || '';
+        $('#companyNameInput').value     = localStorage.getItem(LS.COMPANY_NAME) || '';
+        $('#ceoNameInput').value         = localStorage.getItem(LS.CEO_NAME)     || '';
+        buildExecutivesEditor();
         $('#settingsModal').classList.add('active');
       });
       $('#closeSettingsBtn').addEventListener('click', () => $('#settingsModal').classList.remove('active'));
       $('#saveSettingsBtn').addEventListener('click', () => {
-        localStorage.setItem(LS.AI_PROV,  $('#aiProviderSelect').value);
-        localStorage.setItem(LS.AI_KEY,   $('#apiKeyInput').value);
-        localStorage.setItem(LS.CEO_NAME, $('#ceoNameInput').value);
+        localStorage.setItem(LS.AI_PROV,      $('#aiProviderSelect').value);
+        localStorage.setItem(LS.AI_KEY,       $('#apiKeyInput').value);
+        localStorage.setItem(LS.COMPANY_NAME, $('#companyNameInput').value);
+        localStorage.setItem(LS.CEO_NAME,     $('#ceoNameInput').value);
+
+        // 임원 오버라이드 수집
+        const inputs = $$('.imwon-exec-input', $('#executivesList'));
+        const buf = {};
+        inputs.forEach(inp => {
+          const idx = parseInt(inp.dataset.execIdx, 10);
+          const field = inp.dataset.execField;
+          const v = (inp.value || '').trim();
+          if (isNaN(idx) || !field) return;
+          if (!buf[idx]) buf[idx] = { idx: idx };
+          if (v) buf[idx][field] = v;
+        });
+        const arr = Object.values(buf).filter(x => x.name || x.dept);
+        if (arr.length > 0) localStorage.setItem(LS.EXECUTIVES, JSON.stringify(arr));
+        else                localStorage.removeItem(LS.EXECUTIVES);
+
         $('#settingsModal').classList.remove('active');
         renderActiveTab();
       });
@@ -2047,14 +2301,27 @@
         Notification.requestPermission().then(p => alert('알림 권한: ' + p));
       });
       $('#resetDemoBtn').addEventListener('click', () => {
-        if (!confirm('데모 데이터(업로드 파일 목록 등)를 초기화하시겠습니까?')) return;
+        if (!confirm('업로드한 보고서 목록을 비우시겠습니까?')) return;
         localStorage.removeItem(LS.REPORTS);
         renderActiveTab();
-        alert('데모 데이터가 초기화되었습니다.');
+        alert('보고서 목록이 비워졌습니다.');
       });
       $('#clearLicenseBtn').addEventListener('click', () => {
-        if (!confirm('라이센스 키를 제거하시겠습니까? 다음 진입 시 재입력이 필요합니다.')) return;
+        if (!confirm('라이센스 키를 제거하시겠습니까? Open 데모 모드에서는 영향 없으나 첫 환영 모달이 다시 표시될 수 있습니다.')) return;
         localStorage.removeItem(LS.LICENSE);
+        localStorage.removeItem('imwon.welcomed');
+        location.reload();
+      });
+      $('#resetAllBtn').addEventListener('click', () => {
+        if (!confirm('본 브라우저에 저장된 임원실 관련 모든 데이터(회사명·임원·KPI·메모·명함·관심 입찰·라이센스·테마·AI 키)를 즉시 삭제하시겠습니까?\n\n되돌릴 수 없습니다.')) return;
+        // imwon.* 키만 안전하게 삭제
+        const keys = [];
+        for (let i = 0; i < localStorage.length; i++) {
+          const k = localStorage.key(i);
+          if (k && k.indexOf('imwon.') === 0) keys.push(k);
+        }
+        keys.forEach(k => localStorage.removeItem(k));
+        alert('총 ' + keys.length + '개 항목이 삭제되었습니다. 페이지를 새로고침합니다.');
         location.reload();
       });
     }
